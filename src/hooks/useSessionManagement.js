@@ -215,6 +215,7 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
   return {
     isInSession,
     sessionCode,
+    setSessionCode,
     connectedUsers,
     readyUsers,
     allUsersReady,

@@ -249,7 +249,7 @@ const StemPlayerContent = () => {
               console.log("✅ Created session with code:", sessionCode);
               sessionManagement.setSessionCode(sessionCode);
               socket.emit("join-session", { 
-                sessionId: sessionCode, 
+                sessionCode: sessionCode, 
                 userId: socket.id 
               });
               sessionManagement.setIsInSession(true);
