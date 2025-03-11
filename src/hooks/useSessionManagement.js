@@ -156,7 +156,7 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
     const handlers = {
       'user-joined': ({ userId }) => {
         console.log(`✅ User ${userId} joined the session`);
-        setConnectedUsers((prev) => 
+        setConnectedUsers((prev) =>
           prev.includes(userId) ? prev : [...prev, userId]
         );
       },
@@ -169,7 +169,7 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
         console.log('✅ Ready users:', updatedReadyUsers);
         setReadyUsers(updatedReadyUsers);
         setAllUsersReady(
-          connectedUsers.length > 0 && 
+          connectedUsers.length > 0 &&
           updatedReadyUsers.length === connectedUsers.length
         );
       },
@@ -190,12 +190,10 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
       }
     };
   
-    // Register all event handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       socket.on(event, handler);
     });
   
-    // Cleanup: remove handlers when the component unmounts
     return () => {
       Object.keys(handlers).forEach((event) => {
         socket.off(event);
