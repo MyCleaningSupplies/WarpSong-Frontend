@@ -18,21 +18,55 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
   // Create a new session
   const createSessionHandler = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/remix/create`);
-      const { sessionId } = response.data;
+      // Get the authentication token from localStorage
+      const token = localStorage.getItem("token");
       
-      console.log(`✅ Session created with ID: ${sessionId}`);
+      if (!token) {
+        console.error('❌ No authentication token found. Please log in first.');
+        return null;
+      }
+      
+      // Make the API call with the token in the headers
+      const response = await axios.post(`${API_BASE_URL}/api/remix/create`, {}, {
+        headers: { 
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      // Log the entire response to debug
+      console.log('API Response:', response.data);
+      
+      // The API is returning sessionCode instead of sessionId
+      const sessionId = response.data.sessionCode;
+      
+      if (!sessionId) {
+        console.error('❌ No session code returned from API:', response.data);
+        return null;
+      }
+      
+      console.log(`✅ Session created with code: ${sessionId}`);
       setSessionCode(sessionId);
+      console.log(`✅ Session code state updated to: ${sessionId}`);
       setIsInSession(true);
       
       // Join the socket room
       if (socket) {
         socket.emit('join-session', { sessionId });
+        
+        // Show the ready modal after creating a session too
+        setShowReadyModal(true);
       }
       
       return sessionId;
     } catch (error) {
       console.error('❌ Error creating session: ', error);
+      
+      // Check if it's an authentication error
+      if (error.response && error.response.status === 401) {
+        console.error('Authentication failed. Please log in again.');
+        // You might want to redirect to login page here
+      }
+      
       return null;
     }
   };
@@ -45,8 +79,15 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
         return false;
       }
       
-      // Validate the session code
-      const response = await axios.get(`${API_BASE_URL}/api/remix/validate/${code}`);
+      // Get the authentication token
+      const token = localStorage.getItem("token");
+      
+      // Validate the session code with authentication
+      const response = await axios.get(`${API_BASE_URL}/api/remix/validate/${code}`, {
+        headers: { 
+          Authorization: `Bearer ${token}`
+        }
+      });
       
       if (response.data.valid) {
         console.log(`✅ Joining session: ${code}`);
@@ -166,9 +207,10 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
     };
   }, [socket, connectedUsers]);
 
+  // Make sure the return object includes sessionCode
   return {
     isInSession,
-    sessionCode,
+    sessionCode,  // Ensure this is included
     connectedUsers,
     readyUsers,
     allUsersReady,
