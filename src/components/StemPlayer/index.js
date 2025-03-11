@@ -30,7 +30,7 @@ const StemPlayerContent = () => {
   const toneInitialized = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initialize Tone.js Audio Context on a user gesture
+  // Initialize Tone.js Audio Context on user gesture
   const initializeAudio = async () => {
     if (!toneInitialized.current) {
       try {
@@ -46,7 +46,7 @@ const StemPlayerContent = () => {
     return true;
   };
 
-  // Handle Play/Pause: toggles audio and emits playback-control via socket
+  // Play/Pause handler: toggles Tone.Transport and emits playback-control via socket
   const handlePlayPause = useCallback(async () => {
     if (!toneInitialized.current) {
       const success = await initializeAudio();
@@ -86,9 +86,31 @@ const StemPlayerContent = () => {
     setIsLoading(false);
   }, [audioEngine, socket, sessionManagement]);
 
+  // --- Remote Stem Selection Handler ---
+  // When a client receives a "stem-selected" event from the server,
+  // update the UI state with that stem.
+  useEffect(() => {
+    if (!socket) return;
+    const handleStemSelected = ({ userId, stemId, stemType, stem }) => {
+      console.log("Stem selected from user:", userId, stemId, stemType);
+      // If your stem management hook provides updateRemoteStem, use it.
+      // Otherwise, fall back to calling handleStemSelection with isRemote flag.
+      if (stemManagement && typeof stemManagement.updateRemoteStem === "function") {
+        stemManagement.updateRemoteStem(stem, stemType);
+      } else if (stemManagement && stemManagement.handleStemSelection) {
+        stemManagement.handleStemSelection(stem, stemType, true);
+      }
+    };
+    socket.on("stem-selected", handleStemSelected);
+    return () => {
+      socket.off("stem-selected", handleStemSelected);
+    };
+  }, [socket, stemManagement]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[hsl(260,20%,10%)] p-6">
       <Header />
+
       <SessionControls 
         isInSession={sessionManagement.isInSession}
         sessionCode={sessionManagement.sessionCode}
@@ -97,6 +119,7 @@ const StemPlayerContent = () => {
         leaveSession={sessionManagement.leaveSession}
         connectedUsers={sessionManagement.connectedUsers}
       />
+
       {sessionManagement.isInSession ? (
         <>
           <Visualizer
@@ -114,6 +137,7 @@ const StemPlayerContent = () => {
             sessionCode={sessionManagement.sessionCode}
             socket={socket}
           />
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {Object.entries(stemManagement.STEM_TYPES).map(([type, typeConfig]) => (
               <StemTypeSelection
@@ -127,6 +151,7 @@ const StemPlayerContent = () => {
               />
             ))}
           </div>
+
           <StemSelectionModal
             modalOpen={stemManagement.modalOpen}
             selectedStemType={stemManagement.selectedStemType}
@@ -139,6 +164,7 @@ const StemPlayerContent = () => {
             sessionCode={sessionManagement.sessionCode}
             socket={socket}
           />
+
           <ActionButtons
             selectedStems={Object.values(stemManagement.currentStems).filter(Boolean)}
             sessionCode={sessionManagement.sessionCode}
@@ -146,7 +172,9 @@ const StemPlayerContent = () => {
         </>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-2xl text-white/70 mb-4">Join or create a session to start mixing</div>
+          <div className="text-2xl text-white/70 mb-4">
+            Join or create a session to start mixing
+          </div>
           <div className="text-white/50">Collaborate with friends in real-time</div>
           <button 
             onClick={initializeAudio}
@@ -156,6 +184,7 @@ const StemPlayerContent = () => {
           </button>
         </div>
       )}
+
       <ReadyModal
         showReadyModal={sessionManagement.showReadyModal}
         sessionCode={sessionManagement.sessionCode}
