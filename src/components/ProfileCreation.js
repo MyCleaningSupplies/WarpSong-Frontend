@@ -41,8 +41,7 @@ const ProfileCreation = () => {
     }
   };
 
-  // Update any API calls in this component
-  // For example, if there's a handleSubmit function:
+  // Updated handleSubmit with API_BASE_URL
   const handleSubmit = async () => {
     setLoading(true);
     setError("");
@@ -62,9 +61,6 @@ const ProfileCreation = () => {
     }
     
     try {
-      // Use environment variable for API URL if available
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
       // Generate a unique username by adding a timestamp
       const uniqueUsername = `${name.trim()}_${Date.now()}`;
       
@@ -78,8 +74,8 @@ const ProfileCreation = () => {
       
       console.log("Sending JSON data with unique username:", userData);
       
-      // Register the user
-      const response = await axios.post(`${apiUrl}/api/auth/register`, userData, {
+      // Register the user using API_BASE_URL
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, userData, {
         headers: { 
           "Content-Type": "application/json"
         },
@@ -106,7 +102,8 @@ const ProfileCreation = () => {
           photoFormData.append("photo", photo);
           photoFormData.append("userId", response.data.user.id); // Add user ID from registration response
           
-          await axios.post(`${apiUrl}/api/user/upload-photo`, photoFormData, {
+          // Use API_BASE_URL for photo upload
+          await axios.post(`${API_BASE_URL}/api/user/upload-photo`, photoFormData, {
             headers: { 
               Authorization: `Bearer ${response.data.token}`, 
               "Content-Type": "multipart/form-data" 
@@ -147,7 +144,6 @@ const ProfileCreation = () => {
       setLoading(false);
     }
   };
-  
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-700 to-pink-500 text-white p-6">

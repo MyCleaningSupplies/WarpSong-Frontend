@@ -10,7 +10,7 @@ import ActionButtons from "./ActionButtons";
 import { useSocket } from "../../context/SocketContext";
 import * as Tone from "tone";
 import axios from "axios";
-
+import { API_BASE_URL } from "../../config/api"; // Import API_BASE_URL
 
 // Manual debounce implementation
 const debounce = (func, wait) => {
@@ -53,6 +53,24 @@ const StemPlayerContent = () => {
   // State declarations
   const [isLoading, setIsLoading] = useState(false);
   const [allUsersReady, setAllUsersReady] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Initialize Tone.js on user interaction
+  const initializeAudio = async () => {
+    if (!toneInitialized.current) {
+      try {
+        await Tone.start();
+        console.log("✅ Audio context started");
+        toneInitialized.current = true;
+        return true;
+      } catch (err) {
+        console.error("❌ Failed to start audio context:", err);
+        setError("Failed to initialize audio. Please try again.");
+        return false;
+      }
+    }
+    return true;
+  };
 
   // Throttled BPM update
   const throttledEmitBpmChange = useCallback(
@@ -67,7 +85,13 @@ const StemPlayerContent = () => {
 
   // Optimized play/pause handler
   const handlePlayPause = useCallback(
-    (e) => {
+    async (e) => {
+      // Initialize audio on first interaction
+      if (!toneInitialized.current) {
+        const success = await initializeAudio();
+        if (!success) return;
+      }
+
       const performanceStart = performance.now();
       console.log("handlePlayPause triggered.");
 
@@ -118,6 +142,7 @@ const StemPlayerContent = () => {
         }
       } else {
         console.log("Not all users are ready. Waiting...");
+        setIsLoading(false);
       }
 
       const performanceEnd = performance.now();
@@ -165,42 +190,81 @@ const StemPlayerContent = () => {
     throttledEmitBpmChange,
   ]);
 
+  // Handle socket connection errors
+  useEffect(() => {
+    if (socket) {
+      const handleError = (err) => {
+        console.error("Socket error:", err);
+        setError("Connection error. Please try refreshing the page.");
+      };
+
+      socket.on('connect_error', handleError);
+      socket.on('error', handleError);
+
+      return () => {
+        socket.off('connect_error', handleError);
+        socket.off('error', handleError);
+      };
+    }
+  }, [socket]);
+
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[hsl(260,20%,10%)] p-6">
       <Header />
 
-      // In StemPlayerContent component
-<SessionControls 
-  isInSession={sessionManagement.isInSession}
-  sessionCode={sessionManagement.sessionCode}
-  joinSession={sessionManagement.joinSession}
-  createSessionHandler={async () => {
-    console.log("Creating session...");
-    try {
-      const response = await axios.post(
-        "http://localhost:3001/api/remix/create",
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
+      <SessionControls 
+        isInSession={sessionManagement.isInSession}
+        sessionCode={sessionManagement.sessionCode}
+        joinSession={sessionManagement.joinSession}
+        createSessionHandler={async () => {
+          console.log("Creating session...");
+          try {
+            // Initialize audio on first interaction
+            if (!toneInitialized.current) {
+              const success = await initializeAudio();
+              if (!success) return;
+            }
+            
+            setIsLoading(true);
+            const response = await axios.post(
+              `${API_BASE_URL}/api/remix/create`, // Use API_BASE_URL
+              {},
+              {
+                headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+              }
+            );
 
-      if (response.status === 200) {
-        const { sessionCode } = response.data;
-        console.log("✅ Created session with code:", sessionCode);
-        sessionManagement.setSessionCode(sessionCode);
-        socket.emit("join-session", { sessionCode, userId: socket.id });
-        sessionManagement.setIsInSession(true);
-        sessionManagement.setShowReadyModal(true);
-      }
-    } catch (error) {
-      console.error("❌ Error creating session:", error);
-    }
-  }}
-  leaveSession={sessionManagement.leaveSession}
-  connectedUsers={sessionManagement.connectedUsers}
-/>
-
+            if (response.status === 200) {
+              const { sessionCode } = response.data;
+              console.log("✅ Created session with code:", sessionCode);
+              sessionManagement.setSessionCode(sessionCode);
+              socket.emit("join-session", { 
+                sessionId: sessionCode, 
+                userId: socket.id 
+              });
+              sessionManagement.setIsInSession(true);
+              sessionManagement.setShowReadyModal(true);
+            }
+          } catch (error) {
+            console.error("❌ Error creating session:", error);
+            setError("Failed to create session. Please try again.");
+          } finally {
+            setIsLoading(false);
+          }
+        }}
+        leaveSession={sessionManagement.leaveSession}
+        connectedUsers={sessionManagement.connectedUsers}
+      />
 
       {sessionManagement.isInSession ? (
         <>
@@ -262,6 +326,12 @@ const StemPlayerContent = () => {
           <div className="text-white/50">
             Collaborate with friends in real-time
           </div>
+          <button 
+            onClick={initializeAudio}
+            className="mt-8 px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition"
+          >
+            Initialize Audio
+          </button>
         </div>
       )}
 
@@ -276,6 +346,20 @@ const StemPlayerContent = () => {
       {isLoading && (
         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 z-50">
           <div className="text-white text-2xl">Loading...</div>
+        </div>
+      )}
+
+      {error && (
+        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="ml-4 text-white hover:text-gray-200"
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
     </div>
