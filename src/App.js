@@ -5,7 +5,7 @@ import { SocketProvider } from "./context/SocketContext";  // Add this import
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPanel from "./components/AdminPanel";
 import Login from "./components/Login";
-import StemPlayer from "./components/StemPlayer";
+import StemPlayer from './components/StemPlayer';
 import HomePage from "./components/HomePage";
 import ScanPage from "./components/ScanPage";
 import SoloModePlayer from "./components/SoloModePlayer";
@@ -28,7 +28,7 @@ const App = () => {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute adminOnly={true}>
                   <AdminPanel />
                 </ProtectedRoute>
               }

@@ -20,6 +20,7 @@ const AdminPanel = () => {
     key: "",
     type: "",
   });
+  const [deleteLoading, setDeleteLoading] = useState({});
 
   useEffect(() => {
     fetchStems();
@@ -36,6 +37,30 @@ const AdminPanel = () => {
     } catch (error) {
       console.error("❌ Error fetching stems:", error);
       setLoading(false);
+    }
+  };
+
+  // Add this new function to handle stem deletion
+  const handleDeleteStem = async (stemId) => {
+    if (!window.confirm("Are you sure you want to delete this stem? This action cannot be undone.")) {
+      return;
+    }
+    
+    setDeleteLoading(prev => ({ ...prev, [stemId]: true }));
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_BASE_URL}/delete-stem/${stemId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      // Remove the deleted stem from the state
+      setStems(stems.filter(stem => stem._id !== stemId));
+      alert("Stem deleted successfully!");
+    } catch (error) {
+      console.error("❌ Error deleting stem:", error);
+      alert("Failed to delete stem. Please try again.");
+    } finally {
+      setDeleteLoading(prev => ({ ...prev, [stemId]: false }));
     }
   };
 
@@ -96,6 +121,56 @@ const AdminPanel = () => {
     navigate("/login");
   };
 
+  // Move the renderStemsList function inside the component
+  const renderStemsList = () => {
+    if (loading) {
+      return <div className="text-center py-8">Loading stems...</div>;
+    }
+
+    if (stems.length === 0) {
+      return <div className="text-center py-8">No stems found. Add some!</div>;
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-[#1e1833] rounded-lg overflow-hidden">
+          <thead className="bg-[#2a2444]">
+            <tr>
+              <th className="px-4 py-2 text-white/80">Name</th>
+              <th className="px-4 py-2 text-white/80">Artist</th>
+              <th className="px-4 py-2 text-white/80">Type</th>
+              <th className="px-4 py-2 text-white/80">BPM</th>
+              <th className="px-4 py-2 text-white/80">Key</th>
+              <th className="px-4 py-2 text-white/80">Identifier</th>
+              <th className="px-4 py-2 text-white/80">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {stems.map((stem) => (
+              <tr key={stem._id || stem.identifier} className="border-t border-white/10">
+                <td className="px-4 py-2 text-white/70">{stem.name}</td>
+                <td className="px-4 py-2 text-white/70">{stem.artist}</td>
+                <td className="px-4 py-2 text-white/70">{stem.type}</td>
+                <td className="px-4 py-2 text-white/70">{stem.bpm}</td>
+                <td className="px-4 py-2 text-white/70">{stem.key}</td>
+                <td className="px-4 py-2 text-white/70">{stem.identifier}</td>
+                <td className="px-4 py-2">
+                  <button 
+                    onClick={() => handleDeleteStem(stem._id)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                    disabled={deleteLoading[stem._id]}
+                  >
+                    {deleteLoading[stem._id] ? "Deleting..." : "Delete"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-[#1a1429] text-white p-6 min-h-screen flex flex-col">
       {/* Header */}
@@ -108,24 +183,18 @@ const AdminPanel = () => {
         Logout
       </button>
 
-      <button
-        onClick={() => setShowAddStemModal(true)}
-        className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] flex items-center justify-center hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all"
-      >
-        <span className="text-xl">+</span>
-      </button>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-medium">Stem Library</h2>
+        <button
+          onClick={() => setShowAddStemModal(true)}
+          className="px-4 py-2 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] flex items-center justify-center hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] transition-all"
+        >
+          <span className="text-xl mr-2">+</span> Add New Stem
+        </button>
+      </div>
 
-      {loading ? (
-        <p>Loading stems...</p>
-      ) : (
-        <div>
-          {stems.map((stem) => (
-            <div key={stem.identifier} className="bg-[#1e1833] p-4 rounded-xl my-2">
-              <p>{stem.artist} - {stem.name} | Identifier: {stem.identifier} </p>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Use the renderStemsList function here */}
+      {renderStemsList()}
 
       {/* ✅ MODAL FOR ADDING STEMS */}
       {showAddStemModal && (

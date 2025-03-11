@@ -7,15 +7,27 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+    
     try {
       const { data } = await axios.post("http://localhost:3001/api/auth/login", { username, password });
       localStorage.setItem("token", data.token);
-      navigate("/profile"); // Redirect to profile on success
+      
+      // Check if user is admin and redirect accordingly
+      if (data.isAdmin) {
+        navigate("/admin");
+      } else {
+        navigate("/profile");
+      }
     } catch (err) {
       setError("Invalid credentials. Try again!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,13 +59,15 @@ const Login = () => {
         <button 
           type="submit" 
           className="w-full mt-6 bg-green-500 hover:bg-green-600 py-2 rounded-lg"
+          disabled={loading}
         >
-          🚀 Login
+          {loading ? "Logging in..." : "🚀 Login"}
         </button>
 
         <button 
           onClick={() => navigate("/register")} 
           className="mt-4 text-sm text-gray-300"
+          type="button"
         >
           ➕ Create Account
         </button>
