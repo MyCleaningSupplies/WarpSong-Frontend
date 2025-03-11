@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 const ProfileCreation = () => {
   const navigate = useNavigate();
@@ -40,6 +41,8 @@ const ProfileCreation = () => {
     }
   };
 
+  // Update any API calls in this component
+  // For example, if there's a handleSubmit function:
   const handleSubmit = async () => {
     setLoading(true);
     setError("");

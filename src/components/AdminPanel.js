@@ -2,8 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import AuthContext from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = "http://localhost:3001/api/admin";
+import { API_BASE_URL } from "../config/api";
 
 const AdminPanel = () => {
   const { logout } = useContext(AuthContext);
@@ -29,7 +28,7 @@ const AdminPanel = () => {
   const fetchStems = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_BASE_URL}/get-stems`, {
+      const response = await axios.get(`${API_BASE_URL}/api/admin/get-stems`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setStems(response.data);
@@ -49,7 +48,7 @@ const AdminPanel = () => {
     setDeleteLoading(prev => ({ ...prev, [stemId]: true }));
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${API_BASE_URL}/delete-stem/${stemId}`, {
+      await axios.delete(`${API_BASE_URL}/api/admin/delete-stem/${stemId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       

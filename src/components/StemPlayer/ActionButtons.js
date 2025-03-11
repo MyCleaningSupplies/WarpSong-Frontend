@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../../config/api';
 
 const ActionButtons = ({ selectedStems }) => {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ const ActionButtons = ({ selectedStems }) => {
 
       const token = localStorage.getItem("token");
       await axios.post(
-        "http://localhost:3001/api/mashup/save",
+        `${API_BASE_URL}/api/mashup/save`,
         {
           name: "My Mashup", // Implement mashup name later
           stemIds: selectedStems.map((stem) => stem._id),

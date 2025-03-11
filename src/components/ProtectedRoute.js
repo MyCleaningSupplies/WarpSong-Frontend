@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { Navigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { isAuthenticated } = useContext(AuthContext);
@@ -18,7 +19,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
         }
 
         // Verify the token and check admin status
-        const response = await axios.get("http://localhost:3001/api/user/verify-admin", {
+        const response = await axios.get(`${API_BASE_URL}/api/user/verify-admin`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         

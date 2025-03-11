@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import * as Tone from 'tone';
 import { normalizeId } from './useAudioEngine';
+import { API_BASE_URL } from '../config/api';
 
 export const STEM_TYPES = {
   DRUMS: {
@@ -57,7 +58,7 @@ export default function useStemManagement({ audioEngine, socket, isInSession, se
     const fetchStems = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get("http://127.0.0.1:3001/api/user/my-stems", {
+        const response = await axios.get(`${API_BASE_URL}/api/user/my-stems`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const formattedStems = response.data.map((stem) => ({

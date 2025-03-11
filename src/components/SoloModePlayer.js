@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import * as Tone from "tone";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "../config/api";
 
 // Helper: Normalize identifiers
 const normalizeId = (id) => id?.trim().toLowerCase();
@@ -166,40 +167,17 @@ const SoloModePlayer = () => {
 
   // Fetch user's stems from backend
   useEffect(() => {
+    // Update any API calls in this component
+    // For example, if there's a fetchStems function:
     const fetchStems = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) {
-          console.log("No token found, redirecting to login");
-          navigate("/login");
-          return;
-        }
-        
-        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
-        const response = await axios.get(`${apiUrl}/api/user/my-stems`, {
+        const response = await axios.get(`${API_BASE_URL}/api/user/my-stems`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-        console.log("Raw stems data:", response.data);
-        
-        // Make sure we're working with an array
-        const stemData = Array.isArray(response.data) ? response.data : [];
-        
-        const formattedStems = stemData.map((stem) => ({
-          ...stem,
-          type: stem.type || "Drums",
-          name: stem.name || stem.identifier || "Unknown Stem",
-          artist: stem.artist || "Unknown Artist",
-          identifier: stem.identifier || stem._id || `stem-${Math.random().toString(36).substr(2, 9)}`,
-          fileUrl: stem.fileUrl || stem.url
-        }));
-
-        console.log("Formatted stems:", formattedStems);
-        setStems(formattedStems);
-        setLoading(false);
+        setStems(response.data);
       } catch (error) {
         console.error("❌ Error fetching stems:", error);
-        setLoading(false);
       }
     };
 

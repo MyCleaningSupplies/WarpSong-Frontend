@@ -1,6 +1,6 @@
-// context/SocketContext.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/api';
 
 const SocketContext = createContext();
 
@@ -8,17 +8,29 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:3001', {
-      auth: {
-        token: localStorage.getItem('token')
-      }
+    // Create socket connection
+    const socketInstance = io(SOCKET_URL);
+    
+    socketInstance.on('connect', () => {
+      console.log('✅ Socket connected');
     });
-
-    setSocket(newSocket);
-
-    return () => newSocket.disconnect();
+    
+    socketInstance.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+    });
+    
+    socketInstance.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
+    });
+    
+    setSocket(socketInstance);
+    
+    // Cleanup on unmount
+    return () => {
+      socketInstance.disconnect();
+    };
   }, []);
-
+  
   return (
     <SocketContext.Provider value={{ socket }}>
       {children}
@@ -26,4 +38,6 @@ export const SocketProvider = ({ children }) => {
   );
 };
 
-export const useSocket = () => useContext(SocketContext);
+export const useSocket = () => {
+  return useContext(SocketContext);
+};
