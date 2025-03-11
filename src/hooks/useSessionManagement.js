@@ -1,59 +1,39 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import * as Tone from 'tone';
-import { normalizeId } from './useAudioEngine';
+import { API_BASE_URL } from '../config/api';
 
-export default function useSessionManagement({ 
-  socket, 
-  audioEngine, 
-  stemManagement 
-}) {
-  const [sessionCode, setSessionCode] = useState("");
-  const [connectedUsers, setConnectedUsers] = useState([]);
+export default function useSessionManagement({ socket, audioEngine, stemManagement }) {
   const [isInSession, setIsInSession] = useState(false);
-  const [showReadyModal, setShowReadyModal] = useState(false);
+  const [sessionCode, setSessionCode] = useState('');
+  const [connectedUsers, setConnectedUsers] = useState([]);
   const [readyUsers, setReadyUsers] = useState([]);
   const [allUsersReady, setAllUsersReady] = useState(false);
 
-  const { stemMapRef, setCurrentStems } = stemManagement;
-  const { ensureAudioInitialized } = audioEngine;
-
+  // Create a new session
   const createSessionHandler = async () => {
     try {
-      const response = await axios.post(
-        "http://localhost:3001/api/remix/create",
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-
-      if (response.status === 200) {
-        const { sessionCode } = response.data;
-        console.log("✅ Created session with code:", sessionCode);
-        setSessionCode(sessionCode);
-
-        socket.emit("join-session", { sessionCode, userId: socket.id });
-        setIsInSession(true);
-
-        const normalizeUser = (user) =>
-          typeof user === "object" && user._id ? user._id.toString() : user.toString();
-
-        setConnectedUsers(
-          response.data.users ? response.data.users.map(normalizeUser) : [socket.id]
-        );
-        setShowReadyModal(true);
-
-        console.log(`✅ Directly joined session after creation: ${sessionCode}`);
-      } else {
-        console.error("❌ Failed to create session:", response.data);
+      // Use API_BASE_URL instead of hardcoded localhost URL
+      const response = await axios.post(`${API_BASE_URL}/api/remix/create`);
+      const { sessionId } = response.data;
+      
+      console.log(`✅ Session created with ID: ${sessionId}`);
+      setSessionCode(sessionId);
+      setIsInSession(true);
+      
+      // Join the socket room
+      if (socket) {
+        socket.emit('join-session', { sessionId });
       }
+      
+      return sessionId;
     } catch (error) {
-      console.error("❌ Error creating session:", error);
+      console.error('❌ Error creating session: ', error);
+      return null;
     }
   };
 
-  const joinSession = async () => {
+  // Join an existing session
+  const joinSession = async (code) => {
     if (sessionCode.length !== 4) {
       console.error("Session code must be 4 characters");
       return;
