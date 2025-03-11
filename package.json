@@ -23,6 +23,7 @@
     "tailwind": "tailwindcss",
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "vercel-build": "npm install --legacy-peer-deps && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
