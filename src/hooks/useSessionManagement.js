@@ -58,23 +58,19 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
       if (!code) throw new Error('No session code provided');
       const token = localStorage.getItem("token");
       if (!token) throw new Error('No authentication token found');
-
       const response = await api.post('/api/remix/join', { sessionCode: code }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log("✅ Joined session:", response.data);
-
       socket.emit("join-session", { sessionCode: code, userId: socket.id });
       setSessionCode(code);
       setIsInSession(true);
       setShowReadyModal(true);
       setError(null);
-
-      // Optionally, update connected users from API response
+      // Optionally update connected users from API response:
       const normalizeUser = (u) =>
         typeof u === "object" && u._id ? u._id.toString() : u.toString();
       setConnectedUsers(response.data.users.map(normalizeUser));
-
       return true;
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.message;
@@ -115,14 +111,13 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
 
     const handleUserJoined = ({ userId, users }) => {
       console.log(`✅ User ${userId} joined the session`);
-      // Overwrite with the full list received from the server
       setConnectedUsers(users);
     };
 
     const handleUserLeft = ({ userId, users }) => {
       console.log(`👋 User ${userId} left the session`);
       setConnectedUsers(users);
-      setReadyUsers((prev) => prev.filter((id) => id !== userId));
+      setReadyUsers(prev => prev.filter((id) => id !== userId));
     };
 
     const handleUserReadyUpdate = ({ readyUsers: updated }) => {
@@ -133,8 +128,8 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
 
     const handleStemSelected = ({ userId, stemId, stemType, stem }) => {
       console.log("Stem selected from user:", userId, stemId, stemType);
-      // Call the stemManagement handler with isRemote = true
       if (stemManagement && stemManagement.handleStemSelection) {
+        // Pass isRemote = true so that the remote selection only updates UI
         stemManagement.handleStemSelection(stem, stemType, true);
       }
     };

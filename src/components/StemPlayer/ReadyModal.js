@@ -9,7 +9,7 @@ const ReadyModal = ({
   readyUsers = [],
   allUsersReady,
   setShowReadyModal,
-  socket
+  socket,
 }) => {
   if (!showReadyModal) return null;
 
