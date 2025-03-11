@@ -335,13 +335,16 @@ const StemPlayerContent = () => {
         </div>
       )}
 
-      <ReadyModal 
-        showReadyModal={sessionManagement.showReadyModal}
-        sessionCode={sessionManagement.sessionCode}
-        setUserReady={sessionManagement.setUserReady}
-        connectedUsers={sessionManagement.connectedUsers || []}
-        readyUsers={sessionManagement.readyUsers || []}
-      />
+<ReadyModal
+  showReadyModal={sessionManagement.showReadyModal}
+  sessionCode={sessionManagement.sessionCode}
+  handleReadyClick={sessionManagement.setUserReady}
+  connectedUsers={sessionManagement.connectedUsers || []}
+  readyUsers={sessionManagement.readyUsers || []}
+  allUsersReady={sessionManagement.allUsersReady}
+  setShowReadyModal={sessionManagement.setShowReadyModal}
+  socket={socket}
+/>
 
       {isLoading && (
         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/50 z-50">
