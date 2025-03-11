@@ -1,43 +1,48 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+// src/context/SocketContext.js
+import { createContext, useContext, useEffect, useState } from 'react';
+import io from 'socket.io-client';
 import { SOCKET_URL } from '../config/api';
+
+const socket = io(SOCKET_URL, {
+  withCredentials: true,
+  transports: ['websocket'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children }) => {
-  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
-    // Create socket connection
-    const socketInstance = io(SOCKET_URL);
-    
-    socketInstance.on('connect', () => {
+    socket.on('connect', () => {
       console.log('✅ Socket connected');
+      setIsConnected(true);
     });
-    
-    socketInstance.on('disconnect', () => {
+
+    socket.on('disconnect', () => {
       console.log('❌ Socket disconnected');
+      setIsConnected(false);
     });
-    
-    socketInstance.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
     });
-    
-    setSocket(socketInstance);
-    
-    // Cleanup on unmount
+
     return () => {
-      socketInstance.disconnect();
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
     };
   }, []);
-  
+
   return (
-    <SocketContext.Provider value={{ socket }}>
+    <SocketContext.Provider value={{ socket, isConnected }}>
       {children}
     </SocketContext.Provider>
   );
 };
 
-export const useSocket = () => {
-  return useContext(SocketContext);
-};
+export const useSocket = () => useContext(SocketContext);

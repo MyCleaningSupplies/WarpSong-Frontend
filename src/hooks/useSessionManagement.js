@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import * as Tone from 'tone';
 import { API_BASE_URL } from '../config/api';
 import { normalizeId } from './useAudioEngine';
+
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 export default function useSessionManagement({ socket, audioEngine, stemManagement }) {
   const [isInSession, setIsInSession] = useState(false);
@@ -11,149 +20,136 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
   const [readyUsers, setReadyUsers] = useState([]);
   const [allUsersReady, setAllUsersReady] = useState(false);
   const [showReadyModal, setShowReadyModal] = useState(false);
-  
-  // Reference to the current stems from stemManagement
-  const { stemMapRef, currentStems, setCurrentStems } = stemManagement;
+  const [error, setError] = useState(null);
 
   // Create a new session
-  const createSessionHandler = async () => {
+  const createSessionHandler = useCallback(async () => {
     try {
-      // Get the authentication token from localStorage
       const token = localStorage.getItem("token");
-      
       if (!token) {
-        console.error('❌ No authentication token found. Please log in first.');
-        return null;
+        throw new Error('No authentication token found. Please log in first.');
       }
-      
-      // Make the API call with the token in the headers
-      const response = await axios.post(`${API_BASE_URL}/api/remix/create`, {}, {
-        headers: { 
-          Authorization: `Bearer ${token}`
-        }
+
+      const response = await api.post('/api/remix/create', {}, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Log the entire response to debug
-      console.log('API Response:', response.data);
-      
-      // The API is returning sessionCode instead of sessionId
+
       const sessionId = response.data.sessionCode;
-      
       if (!sessionId) {
-        console.error('❌ No session code returned from API:', response.data);
-        return null;
+        throw new Error('No session code returned from API');
       }
-      
+
       console.log(`✅ Session created with code: ${sessionId}`);
       setSessionCode(sessionId);
-      console.log(`✅ Session code state updated to: ${sessionId}`);
       setIsInSession(true);
-      
-      // Join the socket room
-      if (socket) {
-        socket.emit('join-session', { sessionId });
-        
-        // Show the ready modal after creating a session too
+      setError(null);
+
+      if (socket?.connected) {
+        socket.emit('join-session', { 
+          sessionId,
+          userId: socket.id 
+        });
         setShowReadyModal(true);
+      } else {
+        throw new Error('Socket not connected');
       }
-      
+
       return sessionId;
     } catch (error) {
-      console.error('❌ Error creating session: ', error);
-      
-      // Check if it's an authentication error
-      if (error.response && error.response.status === 401) {
-        console.error('Authentication failed. Please log in again.');
-        // You might want to redirect to login page here
-      }
-      
+      const errorMessage = error.response?.data?.message || error.message;
+      console.error('❌ Error creating session:', errorMessage);
+      setError(errorMessage);
       return null;
     }
-  };
+  }, [socket]);
 
   // Join an existing session
-  const joinSession = async (code) => {
+  const joinSession = useCallback(async (code) => {
     try {
       if (!code) {
-        console.error('❌ No session code provided');
-        return false;
+        throw new Error('No session code provided');
       }
-      
-      // Get the authentication token
+
       const token = localStorage.getItem("token");
-      
-      // Validate the session code with authentication
-      const response = await axios.get(`${API_BASE_URL}/api/remix/validate/${code}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`
-        }
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await api.get(`/api/remix/validate/${code}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.valid) {
         console.log(`✅ Joining session: ${code}`);
         setSessionCode(code);
         setIsInSession(true);
-        
-        // Join the socket room
-        if (socket) {
-          socket.emit('join-session', { sessionId: code });
+        setError(null);
+
+        if (socket?.connected) {
+          socket.emit('join-session', { 
+            sessionId: code,
+            userId: socket.id 
+          });
+          setShowReadyModal(true);
+        } else {
+          throw new Error('Socket not connected');
         }
-        
-        // Show the ready modal
-        setShowReadyModal(true);
-        
+
         return true;
       } else {
-        console.error('❌ Invalid session code');
-        return false;
+        throw new Error('Invalid session code');
       }
     } catch (error) {
-      console.error('❌ Error joining session: ', error);
+      const errorMessage = error.response?.data?.message || error.message;
+      console.error('❌ Error joining session:', errorMessage);
+      setError(errorMessage);
       return false;
     }
-  };
+  }, [socket]);
 
-  // Ensure audio is initialized before starting the session
-  const ensureAudioInitialized = async () => {
-    if (!audioEngine.audioInitialized) {
-      try {
-        // Initialize Tone.js if not already done
+  // Initialize audio context
+  const ensureAudioInitialized = useCallback(async () => {
+    try {
+      if (!audioEngine.audioInitialized) {
         await Tone.start();
         
-        // Create a context if it doesn't exist
-        if (!Tone.context.state || Tone.context.state === 'suspended') {
+        if (Tone.context.state !== 'running') {
           await Tone.context.resume();
         }
         
-        // Set up the transport
-        if (!Tone.Transport.state || Tone.Transport.state === 'stopped') {
+        if (Tone.Transport.state !== 'started') {
           Tone.Transport.start();
         }
-        
-        return true;
-      } catch (error) {
-        console.error('❌ Error initializing audio:', error);
-        return false;
       }
+      return true;
+    } catch (error) {
+      console.error('❌ Error initializing audio:', error);
+      setError('Failed to initialize audio context');
+      return false;
     }
-    return true;
-  };
+  }, [audioEngine.audioInitialized]);
 
-  // Handle user ready state
-  const setUserReady = () => {
-    if (!socket || !sessionCode) {
-      console.error('❌ Socket not connected or not in session');
+  // Set user ready state
+  const setUserReady = useCallback(() => {
+    if (!socket?.connected || !sessionCode) {
+      setError('Socket not connected or session not active');
       return;
     }
     
-    socket.emit('user-ready', { sessionId: sessionCode });
+    socket.emit('user-ready', { 
+      sessionId: sessionCode,
+      userId: socket.id 
+    });
     setShowReadyModal(false);
-  };
+  }, [socket, sessionCode]);
 
-  // Leave the current session
-  const leaveSession = () => {
-    if (socket && sessionCode) {
-      socket.emit('leave-session', { sessionId: sessionCode });
+  // Leave session
+  const leaveSession = useCallback(() => {
+    if (socket?.connected && sessionCode) {
+      socket.emit('leave-session', { 
+        sessionId: sessionCode,
+        userId: socket.id 
+      });
     }
     
     setSessionCode('');
@@ -161,60 +157,69 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
     setConnectedUsers([]);
     setReadyUsers([]);
     setAllUsersReady(false);
-  };
+    setError(null);
+  }, [socket, sessionCode]);
 
   // Socket event handlers
   useEffect(() => {
     if (!socket) return;
-    
-    // User joined event
-    socket.on('user-joined', ({ users }) => {
-      console.log('👤 User joined, updated users:', users);
-      setConnectedUsers(users);
-    });
-    
-    // User left event
-    socket.on('user-left', ({ users }) => {
-      console.log('👋 User left, updated users:', users);
-      setConnectedUsers(users);
-      setReadyUsers(prev => prev.filter(id => users.some(u => u.id === id)));
-    });
-    
-    // User ready event
-    socket.on('user-ready-update', ({ readyUsers: updatedReadyUsers }) => {
-      console.log('✅ Ready users updated:', updatedReadyUsers);
-      setReadyUsers(updatedReadyUsers);
-      
-      // Check if all users are ready
-      if (connectedUsers.length > 0 && updatedReadyUsers.length === connectedUsers.length) {
-        setAllUsersReady(true);
-      } else {
-        setAllUsersReady(false);
+
+    const handlers = {
+      'user-joined': ({ users }) => {
+        console.log('👤 Users updated:', users);
+        setConnectedUsers(users);
+      },
+      'user-left': ({ users }) => {
+        console.log('👋 Users updated:', users);
+        setConnectedUsers(users);
+        setReadyUsers(prev => prev.filter(id => users.some(u => u.id === id)));
+      },
+      'user-ready-update': ({ readyUsers: updatedReadyUsers }) => {
+        console.log('✅ Ready users:', updatedReadyUsers);
+        setReadyUsers(updatedReadyUsers);
+        setAllUsersReady(
+          connectedUsers.length > 0 && 
+          updatedReadyUsers.length === connectedUsers.length
+        );
+      },
+      'session-started': () => {
+        console.log('🎵 Session started!');
+        setShowReadyModal(false);
+      },
+      'connect': () => {
+        console.log('✅ Socket connected');
+      },
+      'disconnect': () => {
+        console.log('❌ Socket disconnected');
+        setError('Connection lost');
+      },
+      'connect_error': (error) => {
+        console.error('❌ Socket connection error:', error);
+        setError('Connection error');
       }
+    };
+
+    // Register all event handlers
+    Object.entries(handlers).forEach(([event, handler]) => {
+      socket.on(event, handler);
     });
-    
-    // Session started event
-    socket.on('session-started', () => {
-      console.log('🎵 Session started!');
-      setShowReadyModal(false);
-    });
-    
+
+    // Cleanup function
     return () => {
-      socket.off('user-joined');
-      socket.off('user-left');
-      socket.off('user-ready-update');
-      socket.off('session-started');
+      Object.keys(handlers).forEach(event => {
+        socket.off(event);
+      });
     };
   }, [socket, connectedUsers]);
 
-  // Make sure the return object includes sessionCode
   return {
     isInSession,
-    sessionCode,  // Ensure this is included
+    sessionCode,
     connectedUsers,
     readyUsers,
     allUsersReady,
     showReadyModal,
+    error,
     setShowReadyModal,
     createSessionHandler,
     joinSession,
