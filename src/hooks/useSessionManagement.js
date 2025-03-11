@@ -152,16 +152,18 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
   // Socket event handlers
   useEffect(() => {
     if (!socket) return;
-
+  
     const handlers = {
-      'user-joined': ({ users }) => {
-        console.log('👤 Users updated:', users);
-        setConnectedUsers(users);
+      'user-joined': ({ userId }) => {
+        console.log(`✅ User ${userId} joined the session`);
+        setConnectedUsers((prev) => 
+          prev.includes(userId) ? prev : [...prev, userId]
+        );
       },
-      'user-left': ({ users }) => {
-        console.log('👋 Users updated:', users);
-        setConnectedUsers(users);
-        setReadyUsers(prev => prev.filter(id => users.some(u => u.id === id)));
+      'user-left': ({ userId }) => {
+        console.log(`👋 User ${userId} left the session`);
+        setConnectedUsers((prev) => prev.filter((id) => id !== userId));
+        setReadyUsers((prev) => prev.filter((id) => id !== userId));
       },
       'user-ready-update': ({ readyUsers: updatedReadyUsers }) => {
         console.log('✅ Ready users:', updatedReadyUsers);
@@ -187,15 +189,15 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
         setError('Connection error');
       }
     };
-
+  
     // Register all event handlers
     Object.entries(handlers).forEach(([event, handler]) => {
       socket.on(event, handler);
     });
-
-    // Cleanup function
+  
+    // Cleanup: remove handlers when the component unmounts
     return () => {
-      Object.keys(handlers).forEach(event => {
+      Object.keys(handlers).forEach((event) => {
         socket.off(event);
       });
     };
