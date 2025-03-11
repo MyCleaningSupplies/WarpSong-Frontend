@@ -11,6 +11,7 @@ import ScanPage from "./components/ScanPage";
 import SoloModePlayer from "./components/SoloModePlayer";
 import ProfileCreation from "./components/ProfileCreation";
 import Connect from "./components/Connect";
+import Profile from "./components/Profile";
 
 
 const App = () => {
@@ -35,6 +36,7 @@ const App = () => {
             <Route path="/stem-player" element={<StemPlayer />} />
             <Route path="/connect" element={<Connect />} />
             <Route path="/solo-mode" element={<SoloModePlayer />} />
+            <Route path="/profile" element={<Profile />} />
           </Routes>
         </Router>
       </SocketProvider>
