@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../config/api";
+import { ArrowLeft, ArrowRight, User, Music, Medal, Camera } from "lucide-react";
 
 const ProfileCreation = () => {
   const navigate = useNavigate();
@@ -146,8 +147,41 @@ const ProfileCreation = () => {
   };
   
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-700 to-pink-500 text-white p-6">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in">
+      {/* Background Gradient */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-festival-purple/20 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-festival-pink/20 rounded-full blur-3xl animate-pulse-slow delay-700" />
+      </div>
+
+      {/* Header with back button */}
+      {step > 1 && (
+        <div className="absolute top-0 left-0 w-full p-6">
+          <button 
+            onClick={handleBack}
+            className="text-white/60 hover:text-white flex items-center"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </button>
+        </div>
+      )}
+
+      {/* Progress indicator */}
+      <div className="w-full max-w-md mb-8">
+        <div className="flex justify-between mb-2">
+          {[1, 2, 3, 4, 5, 6].map((stepNum) => (
+            <div 
+              key={stepNum}
+              className={`h-1 w-1/6 ${
+                stepNum <= step ? "bg-festival-purple" : "bg-gray-600"
+              } rounded-full`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-md w-full glass rounded-3xl p-8 mb-8">
         {/* Show QR code info if available */}
         {qrCodeId && (
           <div className="bg-green-500/20 p-3 rounded-lg mb-4 text-center">
@@ -157,210 +191,231 @@ const ProfileCreation = () => {
         
         {/* Step 1: Username */}
         {step === 1 && (
-          <>
-            <h2 className="text-xl font-bold text-center">What's your name?</h2>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full mt-4 p-2 rounded-lg bg-white/20 text-white placeholder-white/60"
-            />
-            <button 
-              onClick={handleNext} 
-              disabled={!name.trim()}
-              className={`w-full mt-6 py-2 rounded-lg ${!name.trim() ? "bg-gray-400" : "bg-purple-500 hover:bg-purple-600"}`}
-            >
-              Next
-            </button>
-          </>
+          <div className="space-y-6 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
+                <User className="w-10 h-10 text-festival-purple" />
+              </div>
+              <h2 className="text-2xl font-bold text-gradient">What's your name?</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="username" className="text-sm text-gray-400">Username</label>
+                <input
+                  type="text"
+                  id="username"
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-3 glass rounded-lg bg-white/5 text-white border border-white/10 focus:border-festival-purple/50 focus:outline-none"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         )}
         
         {/* Step 2: Password */}
         {step === 2 && (
-          <>
-            <h2 className="text-xl font-bold text-center">Create a password</h2>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter a password"
-              className="w-full mt-4 p-2 rounded-lg bg-white/20 text-white placeholder-white/60"
-            />
-            <div className="flex justify-between mt-6">
-              <button 
-                onClick={handleBack}
-                className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleNext} 
-                disabled={!password.trim()}
-                className={`px-4 py-2 rounded-lg ${!password.trim() ? "bg-gray-400" : "bg-purple-500 hover:bg-purple-600"}`}
-              >
-                Next
-              </button>
+          <div className="space-y-6 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
+                <User className="w-10 h-10 text-festival-purple" />
+              </div>
+              <h2 className="text-2xl font-bold text-gradient">Create a password</h2>
             </div>
-          </>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm text-gray-400">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  placeholder="Enter a password"
+                  className="w-full px-4 py-3 glass rounded-lg bg-white/5 text-white border border-white/10 focus:border-festival-purple/50 focus:outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         )}
         
         {/* Step 3: Photo Upload */}
         {step === 3 && (
-          <>
-            <h2 className="text-xl font-bold text-center">Add a profile photo</h2>
-            <div className="mt-4 flex flex-col items-center">
-              {photo ? (
-                <div className="relative">
+          <div className="space-y-6 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
+                <Camera className="w-10 h-10 text-festival-purple" />
+              </div>
+              <h2 className="text-2xl font-bold text-gradient">Add a profile photo</h2>
+              <p className="text-gray-400 mt-2">Upload a profile photo (optional)</p>
+            </div>
+            
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-32 h-32 rounded-full glass flex items-center justify-center mb-4 overflow-hidden">
+                {photo ? (
                   <img 
                     src={URL.createObjectURL(photo)} 
                     alt="Profile preview" 
-                    className="w-32 h-32 rounded-full object-cover"
+                    className="w-full h-full object-cover"
                   />
-                  <button 
-                    onClick={() => setPhoto(null)}
-                    className="absolute bottom-0 right-0 bg-red-500 rounded-full p-1"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <label className="w-32 h-32 rounded-full bg-white/20 flex items-center justify-center cursor-pointer">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={handlePhotoUpload} 
-                    className="hidden" 
-                  />
-                </label>
-              )}
-              <p className="mt-2 text-sm opacity-70">Optional: Upload a profile photo</p>
+                ) : (
+                  <User className="w-16 h-16 text-festival-purple/50" />
+                )}
+              </div>
+              
+              <label className="cursor-pointer">
+                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-festival-purple">
+                  Choose a photo
+                </button>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handlePhotoUpload}
+                />
+              </label>
             </div>
-            <div className="flex justify-between mt-6">
-              <button 
-                onClick={handleBack}
-                className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleNext}
-                className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600"
-              >
-                Next
-              </button>
-            </div>
-          </>
+          </div>
         )}
         
         {/* Step 4: Favorite Genre */}
         {step === 4 && (
-          <>
-            <h2 className="text-xl font-bold text-center">What's your favorite music genre?</h2>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="space-y-6 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
+                <Music className="w-10 h-10 text-festival-purple" />
+              </div>
+              <h2 className="text-2xl font-bold text-gradient">What's your favorite music genre?</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
               {genres.map((genre) => (
                 <button
                   key={genre}
                   onClick={() => setFavoriteGenre(genre)}
-                  className={`p-2 rounded-lg ${
+                  className={`p-3 rounded-lg transition-colors ${
                     favoriteGenre === genre 
-                      ? "bg-purple-500" 
-                      : "bg-white/20 hover:bg-white/30"
+                      ? "bg-festival-purple text-white" 
+                      : "bg-white/5 border border-white/10 hover:bg-white/10"
                   }`}
                 >
                   {genre}
                 </button>
               ))}
             </div>
-            <div className="flex justify-between mt-6">
-              <button 
-                onClick={handleBack}
-                className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleNext}
-                className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600"
-              >
-                Next
-              </button>
-            </div>
-          </>
+          </div>
         )}
         
         {/* Step 5: Confirmation */}
         {step === 5 && (
-          <>
-            <h2 className="text-xl font-bold text-center">Review Your Profile</h2>
-            <div className="mt-4 flex flex-col items-center">
-              {photo ? (
-                <img 
-                  src={URL.createObjectURL(photo)} 
-                  alt="Profile preview" 
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-              )}
-              <h3 className="mt-2 text-lg font-bold">{name}</h3>
+          <div className="space-y-6 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
+                <Medal className="w-10 h-10 text-festival-purple" />
+              </div>
+              <h2 className="text-2xl font-bold text-gradient">Review Your Profile</h2>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className="w-32 h-32 rounded-full glass flex items-center justify-center mb-4 overflow-hidden">
+                {photo ? (
+                  <img 
+                    src={URL.createObjectURL(photo)} 
+                    alt="Profile preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-16 h-16 text-festival-purple/50" />
+                )}
+              </div>
+              
+              <h3 className="text-xl font-bold">{name}</h3>
+              
               {favoriteGenre && (
-                <span className="mt-1 px-3 py-1 bg-purple-500/30 rounded-full text-sm">
+                <span className="mt-2 px-3 py-1 bg-festival-purple/30 rounded-full text-sm">
                   {favoriteGenre}
                 </span>
               )}
+              
               {qrCodeId && (
                 <div className="mt-3 px-3 py-1 bg-green-500/30 rounded-full text-sm">
                   QR Code: {qrCodeId}
                 </div>
               )}
             </div>
-            <div className="flex justify-between mt-6">
-              <button 
-                onClick={handleBack}
-                className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleNext}
-                className="px-4 py-2 rounded-lg bg-purple-500 hover:bg-purple-600"
-              >
-                Confirm
-              </button>
-            </div>
-          </>
+          </div>
         )}
         
         {/* Step 6: Complete */}
         {step === 6 && (
-          <>
-            <h2 className="text-xl font-bold text-center">Profile Complete!</h2>
-            <p className="text-center mt-2">
+          <div className="text-center space-y-6 animate-fade-in">
+            <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto">
+              <Medal className="w-10 h-10 text-festival-purple" />
+            </div>
+            <h2 className="text-2xl font-bold text-gradient">Profile Complete!</h2>
+            <p className="text-gray-400">
               {qrCodeId 
                 ? "You're ready to claim your first stem!" 
                 : "You're ready to start mixing stems!"}
             </p>
+            
             {error && (
-              <div className="mt-4 p-3 bg-red-500/50 rounded-lg">
-                <p className="text-center">{error}</p>
+              <div className="mt-4 p-3 bg-red-500/20 rounded-lg border border-red-500/30">
+                <p className="text-center text-red-200">{error}</p>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="w-full max-w-md flex justify-between">
+        {step === 1 ? (
+          <button 
+            onClick={handleNext} 
+            disabled={!name.trim()}
+            className={`w-full py-3 rounded-lg flex items-center justify-center ${
+              !name.trim() 
+                ? "bg-gray-600 cursor-not-allowed" 
+                : "bg-festival-purple hover:bg-festival-purple/90"
+            }`}
+          >
+            Next
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </button>
+        ) : step === 6 ? (
+          <button 
+            onClick={handleSubmit} 
+            disabled={loading} 
+            className={`w-full py-3 rounded-lg ${
+              loading 
+                ? "bg-gray-600 cursor-not-allowed" 
+                : "bg-festival-purple hover:bg-festival-purple/90"
+            }`}
+          >
+            {loading ? "Please wait..." : "Begin Your Festival Adventure!"}
+          </button>
+        ) : (
+          <>
             <button 
-              onClick={handleSubmit} 
-              disabled={loading} 
-              className={`w-full mt-6 py-2 rounded-lg ${loading ? "bg-gray-400" : "bg-green-500 hover:bg-green-600"}`}
+              onClick={handleBack}
+              className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
             >
-              {loading ? "Please wait..." : "Begin Your Festival Adventure!"}
+              Back
+            </button>
+            <button 
+              onClick={handleNext} 
+              disabled={step === 2 && !password.trim()}
+              className={`px-4 py-2 rounded-lg flex items-center ${
+                (step === 2 && !password.trim()) 
+                  ? "bg-gray-600 cursor-not-allowed" 
+                  : "bg-festival-purple hover:bg-festival-purple/90"
+              }`}
+            >
+              Next
+              <ArrowRight className="ml-2 h-4 w-4" />
             </button>
           </>
         )}

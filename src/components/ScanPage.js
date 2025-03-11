@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { QrReader } from "react-qr-reader";
+import { Scan, ArrowLeft } from "lucide-react";
+import { API_BASE_URL } from "../config/api";
 
 const ScanPage = () => {
   const navigate = useNavigate();
@@ -14,6 +16,7 @@ const ScanPage = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userHasStem, setUserHasStem] = useState(false);
   const [cameraPermission, setCameraPermission] = useState(true);
+  const [showScanSuccess, setShowScanSuccess] = useState(false);
   
   // Track if we've already processed a QR code to prevent duplicates
   const hasProcessedCode = useRef(false);
@@ -103,15 +106,9 @@ const ScanPage = () => {
       console.log("Extracted QR Code ID:", qrCodeId);
       setScannedData(qrCodeId);
       
-      // Get the API URL from environment or default
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      
-      // Get token if available
-      const token = localStorage.getItem("token");
-      
       // Call the QR code lookup endpoint
-      const response = await axios.get(`${apiUrl}/api/qrcode/lookup?qrCodeId=${qrCodeId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      const response = await axios.get(`${API_BASE_URL}/api/qrcode/lookup?qrCodeId=${qrCodeId}`, {
+        headers: isAuthenticated ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {}
       });
       
       console.log("API Response:", response.data);
@@ -140,6 +137,9 @@ const ScanPage = () => {
         // User is authenticated
         if (response.data.isQrClaimed && !response.data.isClaimedByUser) {
           setError("This QR code has already been claimed by another user.");
+        } else {
+          // Show success dialog
+          setShowScanSuccess(true);
         }
       }
     } catch (error) {
@@ -151,7 +151,6 @@ const ScanPage = () => {
       setLoading(false);
     }
   };
-  
 
   const handleCameraError = (err) => {
     console.error("QR Scanner Error:", err);
@@ -162,22 +161,21 @@ const ScanPage = () => {
   const addStemToCollection = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:3001";
-      const token = localStorage.getItem("token");
       
-      if (!token) {
+      if (!isAuthenticated) {
         // If not authenticated, store QR code and redirect to login
         localStorage.setItem("scannedQrCodeId", scannedData);
         navigate("/login", { state: { redirectAfterLogin: "/scan" } });
         return;
       }
       
-      await axios.post(`${apiUrl}/api/user/add-stem`, 
+      await axios.post(`${API_BASE_URL}/api/user/add-stem`, 
         { stemId: stem.stemId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
       
       setUserHasStem(true);
+      setShowScanSuccess(true);
     } catch (error) {
       console.error("Error adding stem:", error);
       setError(error.response?.data?.error || "Failed to add stem to collection");
@@ -194,6 +192,7 @@ const ScanPage = () => {
     setError("");
     setCameraPermission(true);
     hasProcessedCode.current = false;
+    setShowScanSuccess(false);
   };
 
   const goToLogin = () => {
@@ -212,17 +211,39 @@ const ScanPage = () => {
     navigate("/profile-creation");
   };
 
+  const handleScanComplete = () => {
+    setShowScanSuccess(false);
+    navigate("/connect");
+  };
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-purple-700 to-pink-500 text-white p-6">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg p-6 rounded-2xl shadow-xl">
-        <h1 className="text-2xl font-bold text-center mb-4">Scan QR Code</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-6 bg-gradient-to-br from-[#1A1429] via-[#211937] to-[#06001F] text-white">
+      {/* Background Gradient */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
+      </div>
+
+      {/* Header */}
+      <div className="absolute top-0 left-0 w-full p-4 md:p-6">
+        <button 
+          onClick={() => navigate("/")}
+          className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="sr-only">Terug</span>
+        </button>
+      </div>
+
+      <div className="max-w-md w-full space-y-6 md:space-y-8 text-center">
+        <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Scan Je QR-code</h2>
+        <p className="text-gray-400">Plaats de QR-code voor de camera</p>
         
         {error && (
-          <div className="bg-red-500/50 p-3 rounded-lg mb-4">
+          <div className="bg-red-500/20 border border-red-500/50 p-4 rounded-xl">
             <p className="text-white text-center">{error}</p>
             <button 
               onClick={resetScan} 
-              className="mt-2 w-full bg-white/20 hover:bg-white/30 py-2 rounded-lg"
+              className="mt-4 w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors"
             >
               Try Again
             </button>
@@ -237,31 +258,36 @@ const ScanPage = () => {
         
         {/* Only render the QR reader when scanning is true */}
         {scanning && !loading && !error && (
-          <div className="relative">
-            {cameraPermission ? (
-              <QrReader
-                constraints={{ facingMode: 'environment' }}
-                onResult={(result, error) => {
-                  if (result && !hasProcessedCode.current) {
-                    handleScan(result?.text);
-                  }
-                }}
-                onError={handleCameraError}
-                style={{ width: '100%' }}
-                className="rounded-lg overflow-hidden"
-              />
-            ) : (
-              <div className="bg-red-500/50 p-4 rounded-lg text-center">
-                <p>Camera access denied. Please check your browser permissions.</p>
+          <div className="relative aspect-square max-w-xs md:max-w-sm mx-auto my-4 md:my-8">
+            <div className="absolute inset-0 rounded-3xl overflow-hidden border-2 border-purple-500/30">
+              {cameraPermission ? (
+                <QrReader
+                  constraints={{ facingMode: 'environment' }}
+                  onResult={(result, error) => {
+                    if (result && !hasProcessedCode.current) {
+                      handleScan(result?.text);
+                    }
+                  }}
+                  onError={handleCameraError}
+                  style={{ width: '100%', height: '100%' }}
+                  className="rounded-3xl overflow-hidden"
+                />
+              ) : (
+                <div className="bg-red-500/20 p-4 rounded-lg text-center h-full flex items-center justify-center">
+                  <p>Camera access denied. Please check your browser permissions.</p>
+                </div>
+              )}
+              <div className="absolute inset-0 border-2 border-white/20 rounded-3xl pointer-events-none"></div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-48 h-48 border-2 border-purple-500 rounded-lg"></div>
               </div>
-            )}
-            <p className="text-center mt-2 text-sm">Position the QR code in the frame to scan</p>
+            </div>
           </div>
         )}
         
         {/* Show stem info if authenticated */}
-        {stem && isAuthenticated && (
-          <div className="mt-4">
+        {stem && isAuthenticated && !showScanSuccess && (
+          <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10 text-left">
             <h2 className="text-xl font-bold">{stem.name}</h2>
             <p className="text-sm opacity-80">By {stem.artist}</p>
             
@@ -282,19 +308,19 @@ const ScanPage = () => {
                 <button 
                   onClick={addStemToCollection} 
                   disabled={loading}
-                  className="w-full bg-green-500 hover:bg-green-600 py-2 rounded-lg"
+                  className="w-full py-2 px-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium text-white hover:opacity-90 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50"
                 >
                   {loading ? "Adding..." : "Add to My Collection"}
                 </button>
               ) : (
-                <div className="bg-green-500/20 p-3 rounded-lg text-center">
+                <div className="bg-green-500/20 border border-green-500/50 p-3 rounded-lg text-center text-green-200">
                   ✅ This stem is in your collection
                 </div>
               )}
               
               <button 
                 onClick={resetScan} 
-                className="w-full bg-white/20 hover:bg-white/30 py-2 rounded-lg mt-2"
+                className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors"
               >
                 Scan Another QR Code
               </button>
@@ -303,8 +329,8 @@ const ScanPage = () => {
         )}
         
         {/* Show login/register options if not authenticated but stem was found */}
-        {stem && !isAuthenticated && (
-          <div className="mt-4">
+        {stem && !isAuthenticated && !showScanSuccess && (
+          <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10 text-left">
             <h2 className="text-xl font-bold">{stem.name}</h2>
             <p className="text-sm opacity-80">By {stem.artist}</p>
             
@@ -319,14 +345,14 @@ const ScanPage = () => {
               <div className="flex flex-col gap-2">
                 <button 
                   onClick={goToProfileCreation} 
-                  className="w-full bg-purple-500 hover:bg-purple-600 py-2 rounded-lg"
+                  className="w-full py-2 px-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium text-white hover:opacity-90 transition-all shadow-lg shadow-purple-500/25"
                 >
                   Create Account
                 </button>
                 
                 <button 
                   onClick={goToLogin} 
-                  className="w-full bg-white/20 hover:bg-white/30 py-2 rounded-lg"
+                  className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg transition-colors"
                 >
                   Log In
                 </button>
@@ -335,7 +361,7 @@ const ScanPage = () => {
             
             <button 
               onClick={resetScan} 
-              className="w-full bg-white/20 hover:bg-white/30 py-2 rounded-lg mt-4"
+              className="w-full bg-white/10 hover:bg-white/20 py-2 rounded-lg mt-4 transition-colors"
             >
               Scan Another QR Code
             </button>
@@ -343,32 +369,66 @@ const ScanPage = () => {
         )}
         
         {/* For testing: Manual QR code input */}
-        <div className="mt-6 pt-4 border-t border-white/20">
-          <h3 className="text-sm font-bold text-center mb-2">Test with QR Code ID</h3>
-          <div className="flex">
-            <input 
-              type="text" 
-              placeholder="Enter QR Code ID" 
-              className="flex-1 p-2 rounded-l-lg text-black"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && scanning && !hasProcessedCode.current) {
-                  handleScan(e.target.value);
-                }
-              }}
-            />
-            <button 
-              onClick={(e) => {
-                if (scanning && !hasProcessedCode.current) {
-                  handleScan(e.target.previousSibling.value);
-                }
-              }}
-              className="bg-purple-500 hover:bg-purple-600 px-4 rounded-r-lg"
-            >
-              Test
-            </button>
+        {scanning && !loading && !error && (
+          <div className="mt-6 pt-4 border-t border-white/20">
+            <h3 className="text-sm font-bold text-center mb-2">Test with QR Code ID</h3>
+            <div className="flex">
+              <input 
+                type="text" 
+                placeholder="Enter QR Code ID" 
+                className="flex-1 p-2 rounded-l-lg bg-white/10 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && scanning && !hasProcessedCode.current) {
+                    handleScan(e.target.value);
+                  }
+                }}
+              />
+              <button 
+                onClick={(e) => {
+                  if (scanning && !hasProcessedCode.current) {
+                    handleScan(e.target.previousSibling.value);
+                  }
+                }}
+                className="bg-purple-500 hover:bg-purple-600 px-4 rounded-r-lg transition-colors"
+              >
+                Test
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Scan Success Dialog */}
+      {showScanSuccess && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#1A1429]/95 backdrop-blur-lg rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-xl">
+            <div className="text-center">
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                QR-code Gescand!
+              </h3>
+              <p className="text-gray-300 mt-2">
+                Je hebt een nieuwe stem ontgrendeld!
+              </p>
+              
+              {stem && (
+                <div className="mt-4 bg-white/5 p-4 rounded-xl text-white border border-white/10">
+                  <h4 className="font-bold">{stem.name}</h4>
+                  <p className="text-sm text-gray-300">By {stem.artist}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-center mt-6">
+              <button 
+                onClick={handleScanComplete}
+                className="py-2 px-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-medium text-white hover:opacity-90 transition-all shadow-lg shadow-purple-500/25"
+              >
+                Ga door naar Sessies
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
