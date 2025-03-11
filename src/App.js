@@ -12,6 +12,7 @@ import SoloModePlayer from "./components/SoloModePlayer";
 import ProfileCreation from "./components/ProfileCreation";
 import Connect from "./components/Connect";
 import Profile from "./components/Profile";
+import MashupSuccess from "./components/MashupSuccess";
 
 
 const App = () => {
@@ -37,6 +38,8 @@ const App = () => {
             <Route path="/connect" element={<Connect />} />
             <Route path="/solo-mode" element={<SoloModePlayer />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/mashup-success" element={<MashupSuccess />} />
+
           </Routes>
         </Router>
       </SocketProvider>
