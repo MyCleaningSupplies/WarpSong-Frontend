@@ -14,6 +14,11 @@ import Connect from "./components/Connect";
 import Profile from "./components/Profile";
 import MashupSuccess from "./components/MashupSuccess";
 
+import { API_BASE_URL, SOCKET_URL } from './config/api';
+
+console.log("API_BASE_URL:", API_BASE_URL);
+console.log("SOCKET_URL:", SOCKET_URL);
+
 
 const App = () => {
   return (
