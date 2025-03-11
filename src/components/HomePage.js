@@ -1,8 +1,11 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Camera, Users, Music, Share2, User, Sparkles, QrCode, Play, SquareUserRound } from "lucide-react";
+import AuthContext from "../context/AuthContext";
 
 const HomePage = () => {
+  const { isAuthenticated } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -35,24 +38,43 @@ const HomePage = () => {
     }
   };
 
+  // Handle profile click when not authenticated
+  const handleProfileClick = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      navigate("/login");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden bg-gradient-to-br from-[#1A1429] via-[#211937] to-[#06001F]">
       {/* Profile Button */}
       <div className="absolute top-6 right-6 flex gap-2">
         <Link 
-          to="/solo"
+          to="/solo-mode"
           className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           title="Solo Mode"
         >
           <SquareUserRound className="h-6 w-6" />
         </Link>
-        <Link 
-          to="/profile"
-          className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          title="Profile"
-        >
-          <User className="h-6 w-6" />
-        </Link>
+        
+        {isAuthenticated ? (
+          <Link 
+            to="/profile"
+            className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            title="Profile"
+          >
+            <User className="h-6 w-6" />
+          </Link>
+        ) : (
+          <Link 
+            to="/login"
+            className="p-2 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            title="Login"
+          >
+            <User className="h-6 w-6" />
+          </Link>
+        )}
       </div>
 
       {/* Background Gradient Orbs */}
@@ -64,10 +86,7 @@ const HomePage = () => {
       <div className="max-w-2xl text-center space-y-12">
         {/* Header Section */}
         <div className="space-y-6">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-sm font-medium text-purple-400 space-x-2">
-            <Sparkles className="w-4 h-4" />
-            <span>WarpSong</span>
-          </div>
+          
           
           <h1 className="text-5xl sm:text-7xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
             WarpSong

@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
-import { SocketProvider } from "./context/SocketContext";  // Add this import
+import { SocketProvider } from "./context/SocketContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPanel from "./components/AdminPanel";
 import Login from "./components/Login";
@@ -19,13 +19,11 @@ import { API_BASE_URL, SOCKET_URL } from './config/api';
 console.log("API_BASE_URL:", API_BASE_URL);
 console.log("SOCKET_URL:", SOCKET_URL);
 
-
 const App = () => {
   return (
     <AuthProvider>
-      <SocketProvider>  {/* Add this wrapper */}
+      <SocketProvider>
         <Router>
-
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/profile-creation" element={<ProfileCreation />} />
@@ -42,9 +40,26 @@ const App = () => {
             <Route path="/stem-player" element={<StemPlayer />} />
             <Route path="/connect" element={<Connect />} />
             <Route path="/solo-mode" element={<SoloModePlayer />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/mashup-success" element={<MashupSuccess />} />
-
+            
+            {/* Protect the profile route */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            
+            {/* Protect the mashup success route */}
+            <Route
+              path="/mashup-success"
+              element={
+                <ProtectedRoute>
+                  <MashupSuccess />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Router>
       </SocketProvider>

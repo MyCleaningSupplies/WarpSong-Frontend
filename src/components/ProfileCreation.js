@@ -4,6 +4,30 @@ import axios from "axios";
 import { API_BASE_URL } from "../config/api";
 import { ArrowLeft, ArrowRight, User, Music, Medal, Camera } from "lucide-react";
 
+// Helper component for the festival button styling
+const FestivalButton = ({ children, glow, variant, disabled, onClick, className = "" }) => {
+  const baseClasses = "flex items-center justify-center rounded-xl transition-all duration-300 font-medium";
+  
+  const variantClasses = {
+    primary: "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90",
+    outline: "border border-white/10 bg-white/5 hover:bg-white/10 text-white",
+    ghost: "text-white/70 hover:text-white hover:bg-white/5",
+  };
+  
+  const glowClasses = glow ? "shadow-lg shadow-purple-600/20" : "";
+  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer";
+  
+  return (
+    <button 
+      onClick={disabled ? undefined : onClick}
+      className={`${baseClasses} ${variantClasses[variant || "primary"]} ${glowClasses} ${disabledClasses} ${className}`}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+};
+
 const ProfileCreation = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -147,23 +171,26 @@ const ProfileCreation = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in">
-      {/* Background Gradient */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-festival-purple/20 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-festival-pink/20 rounded-full blur-3xl animate-pulse-slow delay-700" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0f172a] animate-fadeIn">
+      {/* Background Gradient Elements */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-pink-600/20 rounded-full blur-3xl animate-pulse-slow delay-700" />
+        <div className="absolute top-3/4 left-1/4 w-64 h-64 bg-cyan-600/10 rounded-full blur-3xl animate-pulse-slow delay-300" />
+        <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-orange-600/10 rounded-full blur-3xl animate-pulse-slow delay-500" />
       </div>
 
       {/* Header with back button */}
       {step > 1 && (
         <div className="absolute top-0 left-0 w-full p-6">
-          <button 
+          <FestivalButton 
+            variant="ghost" 
             onClick={handleBack}
-            className="text-white/60 hover:text-white flex items-center"
+            className="px-4 py-2"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
-          </button>
+          </FestivalButton>
         </div>
       )}
 
@@ -174,29 +201,32 @@ const ProfileCreation = () => {
             <div 
               key={stepNum}
               className={`h-1 w-1/6 ${
-                stepNum <= step ? "bg-festival-purple" : "bg-gray-600"
-              } rounded-full`}
+                stepNum <= step 
+                  ? "bg-gradient-to-r from-purple-600 to-pink-600" 
+                  : "bg-gray-700"
+              } rounded-full transition-all duration-300`}
             />
           ))}
         </div>
       </div>
 
-      <div className="max-w-md w-full glass rounded-3xl p-8 mb-8">
+      {/* Main content card */}
+      <div className="max-w-md w-full backdrop-blur-xl bg-white/5 rounded-2xl p-8 mb-8 shadow-xl border border-white/10 animate-fadeIn transition-all duration-300">
         {/* Show QR code info if available */}
         {qrCodeId && (
-          <div className="bg-green-500/20 p-3 rounded-lg mb-4 text-center">
-            <p>QR Code detected! Complete your profile to claim it.</p>
+          <div className="bg-green-900/30 border border-green-500/30 p-4 rounded-xl mb-6 text-center animate-fadeIn">
+            <p className="text-green-300">QR Code detected! Complete your profile to claim it.</p>
           </div>
         )}
         
         {/* Step 1: Username */}
         {step === 1 && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
-                <User className="w-10 h-10 text-festival-purple" />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+                <User className="w-10 h-10 text-purple-400" />
               </div>
-              <h2 className="text-2xl font-bold text-gradient">What's your name?</h2>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">What's your name?</h2>
             </div>
             
             <div className="space-y-4">
@@ -206,7 +236,7 @@ const ProfileCreation = () => {
                   type="text"
                   id="username"
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 glass rounded-lg bg-white/5 text-white border border-white/10 focus:border-festival-purple/50 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
@@ -217,12 +247,12 @@ const ProfileCreation = () => {
         
         {/* Step 2: Password */}
         {step === 2 && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
-                <User className="w-10 h-10 text-festival-purple" />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+                <User className="w-10 h-10 text-purple-400" />
               </div>
-              <h2 className="text-2xl font-bold text-gradient">Create a password</h2>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Create a password</h2>
             </div>
             
             <div className="space-y-4">
@@ -232,7 +262,7 @@ const ProfileCreation = () => {
                   type="password"
                   id="password"
                   placeholder="Enter a password"
-                  className="w-full px-4 py-3 glass rounded-lg bg-white/5 text-white border border-white/10 focus:border-festival-purple/50 focus:outline-none"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 text-white border border-white/10 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -242,63 +272,66 @@ const ProfileCreation = () => {
         )}
         
         {/* Step 3: Photo Upload */}
-        {step === 3 && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
-                <Camera className="w-10 h-10 text-festival-purple" />
-              </div>
-              <h2 className="text-2xl font-bold text-gradient">Add a profile photo</h2>
-              <p className="text-gray-400 mt-2">Upload a profile photo (optional)</p>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center">
-              <div className="w-32 h-32 rounded-full glass flex items-center justify-center mb-4 overflow-hidden">
-                {photo ? (
-                  <img 
-                    src={URL.createObjectURL(photo)} 
-                    alt="Profile preview" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <User className="w-16 h-16 text-festival-purple/50" />
-                )}
-              </div>
-              
-              <label className="cursor-pointer">
-                <button className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-festival-purple">
-                  Choose a photo
-                </button>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handlePhotoUpload}
-                />
-              </label>
-            </div>
-          </div>
+{/* Step 3: Photo Upload */}
+{step === 3 && (
+  <div className="space-y-6 animate-fadeIn">
+    <div className="text-center mb-6">
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+        <Camera className="w-10 h-10 text-purple-400" />
+      </div>
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Add a profile photo</h2>
+      <p className="text-gray-400 mt-2">Upload a profile photo (optional)</p>
+    </div>
+    
+    <div className="flex flex-col items-center justify-center">
+      <div className="w-32 h-32 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6 overflow-hidden">
+        {photo ? (
+          <img 
+            src={URL.createObjectURL(photo)} 
+            alt="Profile preview" 
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <User className="w-16 h-16 text-purple-400/50" />
         )}
+      </div>
+      
+      <label className="cursor-pointer">
+        {/* This is a label that wraps the hidden input, so clicking anywhere on it will trigger the file dialog */}
+        <div className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-purple-400 transition-all">
+          Choose a photo
+        </div>
+        <input 
+          type="file" 
+          accept="image/*" 
+          className="hidden" 
+          onChange={handlePhotoUpload}
+        />
+      </label>
+    </div>
+  </div>
+)}
+
         
         {/* Step 4: Favorite Genre */}
         {step === 4 && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
-                <Music className="w-10 h-10 text-festival-purple" />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+                <Music className="w-10 h-10 text-purple-400" />
               </div>
-              <h2 className="text-2xl font-bold text-gradient">What's your favorite music genre?</h2>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">What's your favorite music genre?</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {genres.map((genre) => (
                 <button
                   key={genre}
                   onClick={() => setFavoriteGenre(genre)}
-                  className={`p-3 rounded-lg transition-colors ${
+                  className={`p-3 rounded-xl transition-all ${
                     favoriteGenre === genre 
-                      ? "bg-festival-purple text-white" 
-                      : "bg-white/5 border border-white/10 hover:bg-white/10"
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
+                      : "bg-white/5 border border-white/10 hover:bg-white/10 text-white"
                   }`}
                 >
                   {genre}
@@ -310,16 +343,16 @@ const ProfileCreation = () => {
         
         {/* Step 5: Confirmation */}
         {step === 5 && (
-          <div className="space-y-6 animate-fade-in">
-            <div className="text-center mb-4">
-              <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto mb-4">
-                <Medal className="w-10 h-10 text-festival-purple" />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+                <Medal className="w-10 h-10 text-purple-400" />
               </div>
-              <h2 className="text-2xl font-bold text-gradient">Review Your Profile</h2>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Review Your Profile</h2>
             </div>
             
             <div className="flex flex-col items-center">
-              <div className="w-32 h-32 rounded-full glass flex items-center justify-center mb-4 overflow-hidden">
+              <div className="w-32 h-32 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4 overflow-hidden">
                 {photo ? (
                   <img 
                     src={URL.createObjectURL(photo)} 
@@ -327,20 +360,20 @@ const ProfileCreation = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <User className="w-16 h-16 text-festival-purple/50" />
+                  <User className="w-16 h-16 text-purple-400/50" />
                 )}
               </div>
               
-              <h3 className="text-xl font-bold">{name}</h3>
+              <h3 className="text-xl font-bold text-white">{name}</h3>
               
               {favoriteGenre && (
-                <span className="mt-2 px-3 py-1 bg-festival-purple/30 rounded-full text-sm">
+                <span className="mt-2 px-3 py-1 bg-gradient-to-r from-purple-600/30 to-pink-600/30 rounded-full text-sm text-purple-200">
                   {favoriteGenre}
                 </span>
               )}
               
               {qrCodeId && (
-                <div className="mt-3 px-3 py-1 bg-green-500/30 rounded-full text-sm">
+                <div className="mt-3 px-3 py-1 bg-green-500/30 rounded-full text-sm text-green-200">
                   QR Code: {qrCodeId}
                 </div>
               )}
@@ -350,11 +383,11 @@ const ProfileCreation = () => {
         
         {/* Step 6: Complete */}
         {step === 6 && (
-          <div className="text-center space-y-6 animate-fade-in">
-            <div className="w-20 h-20 rounded-full bg-festival-purple/20 flex items-center justify-center mx-auto">
-              <Medal className="w-10 h-10 text-festival-purple" />
+          <div className="text-center space-y-6 animate-fadeIn">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mx-auto mb-6">
+              <Medal className="w-10 h-10 text-purple-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gradient">Profile Complete!</h2>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Profile Complete!</h2>
             <p className="text-gray-400">
               {qrCodeId 
                 ? "You're ready to claim your first stem!" 
@@ -362,7 +395,7 @@ const ProfileCreation = () => {
             </p>
             
             {error && (
-              <div className="mt-4 p-3 bg-red-500/20 rounded-lg border border-red-500/30">
+              <div className="mt-4 p-4 bg-red-500/20 rounded-xl border border-red-500/30">
                 <p className="text-center text-red-200">{error}</p>
               </div>
             )}
@@ -371,57 +404,70 @@ const ProfileCreation = () => {
       </div>
 
       {/* Navigation buttons */}
-      <div className="w-full max-w-md flex justify-between">
+      <div className="w-full max-w-md flex justify-between animate-fadeIn">
         {step === 1 ? (
-          <button 
+          <FestivalButton 
+            glow
             onClick={handleNext} 
             disabled={!name.trim()}
-            className={`w-full py-3 rounded-lg flex items-center justify-center ${
-              !name.trim() 
-                ? "bg-gray-600 cursor-not-allowed" 
-                : "bg-festival-purple hover:bg-festival-purple/90"
-            }`}
+            className={`w-full py-3 group ${!name.trim() ? "opacity-50" : ""}`}
           >
             Next
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </button>
+            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </FestivalButton>
         ) : step === 6 ? (
-          <button 
+          <FestivalButton 
+            glow
             onClick={handleSubmit} 
             disabled={loading} 
-            className={`w-full py-3 rounded-lg ${
-              loading 
-                ? "bg-gray-600 cursor-not-allowed" 
-                : "bg-festival-purple hover:bg-festival-purple/90"
-            }`}
+            className="w-full py-3"
           >
             {loading ? "Please wait..." : "Begin Your Festival Adventure!"}
-          </button>
+          </FestivalButton>
         ) : (
           <>
-            <button 
-              onClick={handleBack}
-              className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10"
-            >
-              Back
-            </button>
-            <button 
+            <div></div> {/* Spacer for flex justify-between */}
+            <FestivalButton 
+              glow
               onClick={handleNext} 
               disabled={step === 2 && !password.trim()}
-              className={`px-4 py-2 rounded-lg flex items-center ${
-                (step === 2 && !password.trim()) 
-                  ? "bg-gray-600 cursor-not-allowed" 
-                  : "bg-festival-purple hover:bg-festival-purple/90"
-              }`}
+              className="px-6 py-3 group"
             >
               Next
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </FestivalButton>
           </>
         )}
       </div>
     </div>
   );
 };
+
+// Add these animations to your CSS or tailwind.config.js
+// @keyframes fadeIn {
+//   from { opacity: 0; transform: translateY(10px); }
+//   to { opacity: 1; transform: translateY(0); }
+// }
+// 
+// @keyframes pulseSlow {
+//   0%, 100% { opacity: 0.4; }
+//   50% { opacity: 0.7; }
+// }
+// 
+// .animate-fadeIn {
+//   animation: fadeIn 0.5s ease-out forwards;
+// }
+// 
+// .animate-pulse-slow {
+//   animation: pulseSlow 4s ease-in-out infinite;
+// }
+// 
+// .text-gradient {
+//   @apply bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent;
+// }
+// 
+// .glass {
+//   @apply backdrop-blur-xl bg-white/5 border border-white/10;
+// }
 
 export default ProfileCreation;

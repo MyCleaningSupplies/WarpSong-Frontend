@@ -5,51 +5,56 @@ import axios from "axios";
 import { API_BASE_URL } from "../config/api";
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, loading } = useContext(AuthContext);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [adminCheckLoading, setAdminCheckLoading] = useState(adminOnly);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setLoading(false);
-          return;
+    // Only check admin status if adminOnly is true
+    if (adminOnly && isAuthenticated) {
+      const checkAdminStatus = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            setAdminCheckLoading(false);
+            return;
+          }
+
+          // Verify the token and check admin status
+          const response = await axios.get(`${API_BASE_URL}/api/user/verify-admin`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          setIsAdmin(response.data.isAdmin);
+        } catch (error) {
+          console.error("Error verifying admin status:", error);
+        } finally {
+          setAdminCheckLoading(false);
         }
+      };
 
-        // Verify the token and check admin status
-        const response = await axios.get(`${API_BASE_URL}/api/user/verify-admin`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        setIsAdmin(response.data.isAdmin);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error verifying admin status:", error);
-        setLoading(false);
-      }
-    };
-
-    if (adminOnly) {
       checkAdminStatus();
     } else {
-      setLoading(false);
+      setAdminCheckLoading(false);
     }
-  }, [adminOnly]);
+  }, [adminOnly, isAuthenticated]);
 
-  if (loading) {
+  // Show loading while checking auth or admin status
+  if (loading || adminCheckLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>;
   }
 
+  // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
 
+  // Redirect to profile if admin route but user is not admin
   if (adminOnly && !isAdmin) {
     return <Navigate to="/profile" />;
   }
 
+  // User is authenticated (and is admin if required)
   return children;
 };
 

@@ -90,7 +90,7 @@ const AdminPanel = () => {
   
     try {
       const token = localStorage.getItem("token");
-      await axios.post(`${API_BASE_URL}/add-stem`, formData, {
+      await axios.post(`${API_BASE_URL}/api/admin/add-stem`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

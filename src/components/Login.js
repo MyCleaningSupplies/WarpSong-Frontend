@@ -61,7 +61,7 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#1A1429] via-[#211937] to-[#06001F] flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">WarpSong</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">WarpSong</h1>
           <p className="text-gray-400">Sign in to your account</p>
         </div>
 
@@ -93,16 +93,8 @@ const Login = () => {
 
             <div className="space-y-2">
               <div className="flex justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-gray-200">
-                  Password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setForgotPasswordOpen(true)}
-                  className="text-purple-400 text-sm hover:underline"
-                >
-                  Forgot password?
-                </button>
+        
+          
               </div>
               <div className="relative">
                 <input
@@ -151,10 +143,10 @@ const Login = () => {
                 Don't have an account?
                 <button
                   type="button"
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate("/scan")}
                   className="ml-2 text-purple-400 hover:underline"
                 >
-                  Create Account
+                  Scan your ticket!
                 </button>
               </p>
             </div>
