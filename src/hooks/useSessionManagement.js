@@ -69,40 +69,29 @@ export default function useSessionManagement({ socket, audioEngine, stemManageme
       if (!code) {
         throw new Error('No session code provided');
       }
-
       const token = localStorage.getItem("token");
       if (!token) {
         throw new Error('No authentication token found');
       }
-
-      const response = await api.get(`/api/remix/validate/${code}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.data.valid) {
-        console.log(`✅ Joining session: ${code}`);
-        setSessionCode(code);
-        setIsInSession(true);
-        setError(null);
-
-        if (socket?.connected) {
-          socket.emit('join-session', { 
-            sessionId: code,
-            userId: socket.id 
-          });
-          setShowReadyModal(true);
-        } else {
-          throw new Error('Socket not connected');
-        }
-
-        return true;
-      } else {
-        throw new Error('Invalid session code');
-      }
+      // Use POST to the /join endpoint
+      const response = await api.post(
+        '/api/remix/join',
+        { sessionCode: code },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log("✅ Joined session:", response.data);
+      socket.emit("join-session", { sessionCode: code, userId: socket.id });
+      setSessionCode(code);
+      setIsInSession(true);
+  
+      const normalizeUser = (user) =>
+        typeof user === "object" && user._id ? user._id.toString() : user.toString();
+      setConnectedUsers(response.data.users.map(normalizeUser));
+      setShowReadyModal(true);
+      return true;
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message;
-      console.error('❌ Error joining session:', errorMessage);
-      setError(errorMessage);
+      console.error("❌ Failed to join session:", error);
+      setError(error.response?.data?.message || error.message);
       return false;
     }
   }, [socket]);
