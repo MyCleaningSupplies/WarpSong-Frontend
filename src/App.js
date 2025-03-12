@@ -11,7 +11,7 @@ import ScanPage from "./components/ScanPage";
 import SoloModePlayer from "./components/SoloModePlayer";
 import ProfileCreation from "./components/ProfileCreation";
 import Connect from "./components/Connect";
-import Profile from "./components/Profile";
+import { ProfileScreen } from "./components/Profile"; // Named import
 import MashupSuccess from "./components/MashupSuccess";
 
 import { API_BASE_URL, SOCKET_URL } from './config/api';
@@ -46,7 +46,7 @@ const App = () => {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <Profile />
+                  <ProfileScreen />
                 </ProtectedRoute>
               }
             />
