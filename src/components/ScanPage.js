@@ -65,21 +65,21 @@ const ScanPage = () => {
   const handleScan = async (data) => {
     // Prevent duplicate processing
     if (hasProcessedCode.current || !scanning) return;
-
+  
     // Mark as processed immediately
     hasProcessedCode.current = true;
     setScanning(false);
     setLoading(true);
-
+  
     // Stop all video streams
     stopVideoStreams();
-
+  
     try {
       console.log("QR Code scanned:", data);
-
+  
       // Parse the QR code data
       let qrCodeId;
-
+  
       // Handle different QR code formats
       if (typeof data === 'string') {
         if (data.startsWith("http")) {
@@ -100,26 +100,26 @@ const ScanPage = () => {
         // If data is not a string, it might be an object already
         qrCodeId = data.qrCodeId || data;
       }
-
+  
       if (!qrCodeId) {
         throw new Error("Invalid QR code format");
       }
-
+  
       console.log("Extracted QR Code ID:", qrCodeId);
       setScannedData(qrCodeId);
-
+  
       // Call the QR code lookup endpoint
       const response = await axios.get(`${API_BASE_URL}/api/qrcode/lookup?qrCodeId=${qrCodeId}`, {
         headers: isAuthenticated ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {}
       });
-
+  
       console.log("API Response:", response.data);
-
+  
       // Set the stem data
       setStem(response.data.stem);
       setIsAuthenticated(response.data.isAuthenticated);
       setUserHasStem(response.data.userHasStem || false);
-
+  
       // If user is not authenticated
       if (!response.data.isAuthenticated) {
         // Check if QR code is already claimed
@@ -129,7 +129,7 @@ const ScanPage = () => {
           // QR code is available, store it and redirect to profile creation
           console.log("User not authenticated, redirecting to profile creation");
           localStorage.setItem("scannedQrCodeId", qrCodeId);
-
+  
           // Use a short timeout to ensure the state is updated before navigation
           setTimeout(() => {
             navigate("/profile-creation");
@@ -139,10 +139,12 @@ const ScanPage = () => {
         // User is authenticated
         if (response.data.isQrClaimed && !response.data.isClaimedByUser) {
           setError("This QR code has already been claimed by another user.");
-        } else {
-          // Show success dialog
+        } else if (response.data.userHasStem) {
+          // Only show success dialog if user already has the stem
           setShowScanSuccess(true);
         }
+        // If user doesn't have the stem yet, we don't show the success dialog
+        // They'll see the "Add to My Collection" button instead
       }
     } catch (error) {
       console.error("Error processing QR code:", error);
@@ -153,6 +155,7 @@ const ScanPage = () => {
       setLoading(false);
     }
   };
+  
 
   const handleCameraError = (err) => {
     console.error("QR Scanner Error:", err);
@@ -163,23 +166,25 @@ const ScanPage = () => {
   const addStemToCollection = async () => {
     try {
       setLoading(true);
-
+  
       if (!isAuthenticated) {
         // If not authenticated, store QR code and redirect to login
         localStorage.setItem("scannedQrCodeId", scannedData);
         navigate("/login", { state: { redirectAfterLogin: "/scan" } });
         return;
       }
-
+  
       // API call to add stem to user's collection
       const response = await axios.post(`${API_BASE_URL}/api/user/add-stem`,
         { stemId: stem.stemId },
         { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
       );
-
+  
       setUserHasStem(true);
+      
+      // Now show the success modal after successfully adding the stem
       setShowScanSuccess(true);
-
+  
       // Update gamification stats
       await updateStats(); // Call updateStats to refresh gamification context data
     } catch (error) {
@@ -189,6 +194,7 @@ const ScanPage = () => {
       setLoading(false);
     }
   };
+  
 
   const resetScan = () => {
     // Reset all state
