@@ -1,70 +1,99 @@
-# Getting Started with Create React App
+# WarpSong Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, interactive music mixing application that allows users to create mashups, collaborate with others, and collect music stems.
 
-## Available Scripts
+## 🎵 Features
 
-In the project directory, you can run:
+- **Stem Collection**: Scan QR codes to collect unique music stems
+- **Solo Mode**: Create mashups by mixing different stems together
+- **Collaborative Mixing**: Join sessions with friends to create music together
+- **User Profiles**: Track your collected stems and created mashups
+- **Gamification**: Earn XP and level up as you collect stems and create mashups
 
-### `npm start`
+## 🛠️ Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Frontend Framework**: React.js
+- **Routing**: React Router
+- **Audio Processing**: Tone.js
+- **Real-time Communication**: Socket.IO
+- **HTTP Client**: Axios
+- **UI Components**: Custom components with Tailwind CSS
+- **Icons**: Lucide React
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 🚀 Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v18.17.0 recommended)
+- npm or yarn
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/warpsong-frontend.git
+cd warpsong-frontend
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies:
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Start the development server:
+```bash
+npm start
+```
 
-### `npm run eject`
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 📱 Application Structure
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- **Authentication**: User registration, login, and profile management
+- **Stem Player**: Interactive audio player for mixing stems
+- **Solo Mode**: Create mashups on your own
+- **Scan Page**: Scan QR codes to collect new stems
+- **Profile**: View your collected stems and created mashups
+- **Admin Panel**: Manage stems and users (admin only)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 🔌 API Integration
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+The frontend connects to the WarpSong backend API for:
+- User authentication
+- Stem management
+- Mashup creation and storage
+- Real-time collaboration
+- Gamification features
 
-## Learn More
+## 🎮 Gamification
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The application includes gamification features:
+- Earn XP for collecting stems and creating mashups
+- Level up as you earn more XP
+- Track your progress in your profile
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🧩 Components
 
-### Code Splitting
+- **StemPlayer**: Core component for playing and mixing stems
+- **SoloModePlayer**: Simplified player for creating mashups alone
+- **Profile**: Display user information, stems, and mashups
+- **ScanPage**: QR code scanner for collecting stems
+- **LevelUpModal**: Displays level-up notifications
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 📦 Deployment
 
-### Analyzing the Bundle Size
+The application is configured for deployment on Vercel:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```bash
+npm run build
+```
 
-### Making a Progressive Web App
+## 🔒 Environment Variables
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+The application uses environment variables for API configuration:
+- Development mode connects to localhost
+- Production mode connects to the deployed backend
 
-### Advanced Configuration
+## 📝 License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is licensed under the MIT License - see the LICENSE file for details.
