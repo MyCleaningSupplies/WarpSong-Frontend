@@ -219,7 +219,7 @@ const ScanPage = () => {
 
   const handleScanComplete = () => {
     setShowScanSuccess(false);
-    navigate("/connect");
+    navigate("/stem-player");
   };
 
   return (
