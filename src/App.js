@@ -30,13 +30,13 @@ const App = () => {
               <Route path="/" element={<HomePage />} />
               <Route path="/profile-creation" element={<ProfileCreation />} />
               <Route path="/login" element={<Login />} />
-              <Route
-                path="/admin"
+              <Route 
+                path="/admin" 
                 element={
                   <ProtectedRoute adminOnly={true}>
                     <AdminPanel />
                   </ProtectedRoute>
-                }
+                } 
               />
               <Route path="/scan" element={<ScanPage />} />
               <Route path="/stem-player" element={<StemPlayer />} />
