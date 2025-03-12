@@ -11,20 +11,20 @@ const HomePage = () => {
 
   const onboardingSteps = [
     {
-      title: "Welkom bij WarpSong!",
-      description: "Maak je eigen unieke festival mashups door stems te verzamelen van verschillende artiesten. Begin je muzikale avontuur!",
+      title: "Welcome to WarpSong!",
+      description: "Create your own unique festival mashups by collecting stems from different artists. Start your musical adventure!",
       image: <Music className="w-12 h-12 text-festival-purple mb-4 animate-bounce" />,
       bgClass: "from-festival-purple/20 via-festival-pink/10 to-transparent"
     },
     {
-      title: "Verzamel Stems",
-      description: "Scan je QR-code bij verschillende podia om stems van optredens te verzamelen. Elke artiest voegt iets unieks toe aan jouw mix!",
+      title: "Collect Stems",
+      description: "Scan your QR code at different stages to collect stems from performances. Each artist adds something unique to your mix!",
       image: <QrCode className="w-12 h-12 text-festival-pink mb-4 animate-pulse" />,
       bgClass: "from-festival-pink/20 via-festival-purple/10 to-transparent"
     },
     {
-      title: "Maak je Eerste Mix",
-      description: "Net als bij BeReal, kun je pas andere mixen beluisteren nadat je je eerste eigen mix hebt gemaakt. Begin met scannen om je eerste stems te verzamelen!",
+      title: "Create Your First Mix",
+      description: "You can only listen to other mixes after creating your first mix. Start scanning to collect your first stems!",
       image: <Play className="w-12 h-12 text-festival-cyan mb-4 animate-bounce" />,
       bgClass: "from-festival-cyan/20 via-festival-pink/10 to-transparent"
     }
@@ -104,17 +104,17 @@ const HomePage = () => {
             className="group flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium hover:opacity-90 transition-all shadow-lg shadow-purple-500/25"
           >
             <QrCode className="mr-1 h-5 w-5 transition-transform group-hover:scale-110" />
-            Start met Scannen
+            Start Scanning
           </Link>
           <Link 
-            to="/connect"
+            to="/stem-player"
             className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-purple-500/30 text-purple-400 font-medium hover:bg-purple-500/10 transition-all"
           >
             <Users className="mr-1 h-5 w-5" />
-            Deelnemen aan Sessie
+            Join Session
           </Link>
           <Link 
-            to="/solo"
+            to="/solo-mode"
             className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-cyan-500/30 text-cyan-400 font-medium hover:bg-cyan-500/10 transition-all"
           >
             <SquareUserRound className="mr-1 h-5 w-5" />
@@ -128,24 +128,24 @@ const HomePage = () => {
             <div className="w-14 h-14 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto">
               <QrCode className="h-7 w-7" />
             </div>
-            <h3 className="text-lg font-semibold">Scan & Ontdek</h3>
-            <p className="text-gray-400">Ontgrendel unieke stems van artiesten</p>
+            <h3 className="text-lg font-semibold">Scan & Discover</h3>
+            <p className="text-gray-400">Unlock unique stems from artists</p>
           </div>
           
           <div className="text-center space-y-3 p-4">
             <div className="w-14 h-14 rounded-2xl bg-pink-500/10 text-pink-400 flex items-center justify-center mx-auto">
               <Users className="h-7 w-7" />
             </div>
-            <h3 className="text-lg font-semibold">Samen Mixen</h3>
-            <p className="text-gray-400">Maak mashups met andere bezoekers</p>
+            <h3 className="text-lg font-semibold">Mix Together</h3>
+            <p className="text-gray-400">Create mashups with other visitors</p>
           </div>
           
           <div className="text-center space-y-3 p-4">
             <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
               <Music className="h-7 w-7" />
             </div>
-            <h3 className="text-lg font-semibold">Deel je Mix</h3>
-            <p className="text-gray-400">Deel je creaties met de wereld</p>
+            <h3 className="text-lg font-semibold">Share Your Mix</h3>
+            <p className="text-gray-400">Share your creations with the world</p>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ const HomePage = () => {
                   onClick={handleNextStep}
                   className="w-full sm:w-auto px-6 py-3 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium hover:opacity-90 transition-all shadow-lg shadow-purple-500/25"
                 >
-                  {currentStep < onboardingSteps.length - 1 ? "Volgende" : "Begin je Avontuur"}
+                  {currentStep < onboardingSteps.length - 1 ? "Next" : "Begin Your Adventure"}
                 </button>
 
                 {currentStep < onboardingSteps.length - 1 && (
@@ -201,7 +201,7 @@ const HomePage = () => {
                     onClick={() => setShowOnboarding(false)}
                     className="text-sm text-gray-400 hover:text-white transition-colors"
                   >
-                    Overslaan
+                    Skip
                   </button>
                 )}
               </div>

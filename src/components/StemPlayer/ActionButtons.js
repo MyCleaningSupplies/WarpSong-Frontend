@@ -9,7 +9,7 @@ const ActionButtons = ({ selectedStems }) => {
   const handleSaveMashup = async () => {
     try {
       if (!selectedStems.length) {
-        console.error("❌ At least one stem is required to save a mashup.");
+        console.error("❌ Er is minimaal 1 stem nodig om een mashup te maken.");
         return;
       }
 

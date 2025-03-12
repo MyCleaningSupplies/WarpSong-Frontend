@@ -1,13 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import * as Tone from "tone";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { Users, Wand2, RefreshCw, PlusCircle, UserPlus, Check, Music, QrCode, Play } from "lucide-react";
 import Header from "./Header";
-import SessionControls from "./SessionControls";
-import Visualizer from "./Visualizer";
-import StemTypeSelection from "./StemTypeSelection";
-import StemSelectionModal from "./StemSelectionModal";
-import ReadyModal from "./ReadyModal";
-import ActionButtons from "./ActionButtons";
 import { API_BASE_URL } from "../../config/api";
 
 // Helper: Normalize identifiers
@@ -17,33 +13,57 @@ const normalizeId = (id) => id?.trim().toLowerCase();
 const STEM_TYPES = {
   DRUMS: { 
     name: "Drums", 
-    color: "#EC4899",
+    color: "#EC4899", // Festival pink
     match: (type) => type.toLowerCase() === "drums"
   },
   BASS: { 
     name: "Bass", 
-    color: "#F97316",
+    color: "#F97316", // Festival orange
     match: (type) => type.toLowerCase() === "bass"
   },
   MELODIE: { 
-    name: "Melodie", 
-    color: "#06B6D4",
+    name: "Melodie", // Keeping this as "Melodie" for backend compatibility
+    color: "#06B6D4", // Festival cyan
     match: (type) => type.toLowerCase() === "melodie"
   },
   VOCALS: { 
     name: "Vocals", 
-    color: "#8B5CF6",
+    color: "#8B5CF6", // Festival purple
     match: (type) => type.toLowerCase() === "vocals"
   },
 };
 
+// Festival Button Component
+const FestivalButton = ({ children, onClick, variant = "default", glow = false, disabled = false, className = "" }) => {
+  const baseClasses = "px-4 py-2 rounded-full font-medium transition-all duration-300 flex items-center justify-center";
+  
+  const variantClasses = {
+    default: `bg-gradient-to-r from-purple-600 to-pink-600 text-white ${glow ? "shadow-lg shadow-purple-500/25" : ""}`,
+    outline: "bg-white/10 backdrop-blur-sm border border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+  };
+  
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variantClasses[variant]} ${disabled ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"} ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
 const StemPlayer = () => {
-  /* ------------------ Simulated Session State ------------------ */
-  const [isInSession, setIsInSession] = useState(false);
+  const navigate = useNavigate();
+  
+  /* ------------------ Session State ------------------ */
+  const [showCreateSession, setShowCreateSession] = useState(false);
+  const [showJoinSession, setShowJoinSession] = useState(false);
+  const [showSessionLobby, setShowSessionLobby] = useState(false);
   const [sessionCode, setSessionCode] = useState("");
-  const [connectedUsers, setConnectedUsers] = useState([]);
-  const [readyUsers, setReadyUsers] = useState([]);
-  const [showReadyModal, setShowReadyModal] = useState(false);
+  const [sessionParticipants, setSessionParticipants] = useState([]);
+  const [isReady, setIsReady] = useState(false);
+  const [username, setUsername] = useState("");
   const [error, setError] = useState(null);
 
   /* ------------------ Audio & Playback State ------------------ */
@@ -58,8 +78,6 @@ const StemPlayer = () => {
   const [currentStems, setCurrentStems] = useState({});
   const [loadingStems, setLoadingStems] = useState({});
   const [preloadProgress, setPreloadProgress] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedStemType, setSelectedStemType] = useState(null);
 
   /* ------------------ Tone.js Refs ------------------ */
   const mainMixerRef = useRef(null);
@@ -67,6 +85,16 @@ const StemPlayer = () => {
   const volumeNodeRefs = useRef({});
   const buffersRef = useRef({});
   const playbackTimeoutRef = useRef(null);
+
+  // Get username from localStorage if profile exists
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    } else {
+      setUsername(`User${Math.floor(Math.random() * 1000)}`);
+    }
+  }, []);
 
   /* ------------------ Audio Initialization ------------------ */
   const ensureAudioInitialized = async () => {
@@ -125,19 +153,6 @@ const StemPlayer = () => {
     };
   }, []);
 
-  /* ------------------ Update BPM ------------------ */
-  useEffect(() => {
-    if (toneInitialized.current) {
-      Tone.Transport.bpm.value = bpm;
-    }
-  }, [bpm]);
-
-  /* ------------------ Playback Ready Check ------------------ */
-  useEffect(() => {
-    const hasStems = Object.values(currentStems).some(Boolean);
-    setPlaybackReady(hasStems);
-  }, [currentStems]);
-
   /* ------------------ Load User Stems from API ------------------ */
   const loadUserStems = async () => {
     try {
@@ -158,325 +173,411 @@ const StemPlayer = () => {
     loadUserStems();
   }, []);
 
-  /* ------------------ Preload Metadata ------------------ */
-  const preloadMetadata = async () => {
-    if (stems.length === 0) return;
-    console.log(`Preloading metadata for ${stems.length} audio files...`);
-    setPreloadProgress(0);
-    let loaded = 0;
-    const increment = 100 / stems.length;
-    for (let i = 0; i < stems.length; i++) {
-      loaded++;
-      setPreloadProgress(loaded * increment);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+  // Generate a random 4-letter code
+  const generateSessionCode = () => {
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
-    console.log("Preloading metadata complete!");
+    return code;
   };
 
-  useEffect(() => {
-    if (stems.length > 0) {
-      preloadMetadata();
-    }
-  }, [stems]);
+  // Handle creating a new session
+  const handleCreateSession = async () => {
+    await ensureAudioInitialized();
+    const code = generateSessionCode();
+    setSessionCode(code);
+    
+    // Initialize with current user
+    setSessionParticipants([
+      {
+        id: "user-1",
+        name: username,
+        ready: false,
+        stemType: "Drums" // Host automatically gets drums
+      }
+    ]);
+    
+    setShowCreateSession(false);
+    setShowSessionLobby(true);
+  };
 
-  /* ------------------ Load Buffer ------------------ */
-  const loadBuffer = async (stem) => {
-    const id = normalizeId(stem.identifier);
-    if (buffersRef.current[id] && buffersRef.current[id].loaded) {
-      console.log(`Using cached buffer for ${id}`);
-      return buffersRef.current[id];
-    }
-    console.log(`Loading buffer for ${id}...`);
-    return new Promise((resolve, reject) => {
-      const buffer = new Tone.Buffer(
-        stem.fileUrl,
-        () => {
-          console.log(`✅ Buffer loaded for ${id}`);
-          buffersRef.current[id] = buffer;
-          resolve(buffer);
-        },
-        (err) => {
-          console.error(`Error loading buffer for ${id}:`, err);
-          reject(err);
+  // Handle joining an existing session
+  const handleJoinSession = async () => {
+    await ensureAudioInitialized();
+    if (sessionCode.length !== 4) return;
+    
+    // Simulate joining a session
+    setSessionParticipants([
+      {
+        id: "host-1",
+        name: "Host User",
+        ready: false,
+        stemType: "Drums"
+      },
+      {
+        id: "user-1",
+        name: username,
+        ready: false,
+        stemType: null
+      }
+    ]);
+    
+    setShowJoinSession(false);
+    setShowSessionLobby(true);
+  };
+
+  // Simulate another user joining (for demo)
+  const handleAddParticipant = () => {
+    if (sessionParticipants.length >= 4) return;
+    
+    const stemTypes = ["Drums", "Bass", "Melodie", "Vocals"];
+    const availableStemTypes = stemTypes.filter(type => 
+      !sessionParticipants.some(p => p.stemType === type)
+    );
+    
+    if (availableStemTypes.length > 0) {
+      setSessionParticipants([
+        ...sessionParticipants,
+        {
+          id: `user-${sessionParticipants.length + 1}`,
+          name: `User${Math.floor(Math.random() * 1000)}`,
+          ready: Math.random() > 0.5, // Randomly set ready status
+          stemType: availableStemTypes[0]
         }
-      );
-    });
-  };
-
-  /* ------------------ Prepare Audio Processing ------------------ */
-  const prepareAudioProcessing = async () => {
-    const initialized = await ensureAudioInitialized();
-    if (!initialized) {
-      console.error("Could not initialize audio");
-      return false;
-    }
-    const activeStems = Object.values(currentStems).filter(Boolean);
-    if (activeStems.length === 0) {
-      console.log("No stems selected for playback");
-      return false;
-    }
-    try {
-      await Promise.all(
-        activeStems.map((stem) => {
-          const id = normalizeId(stem.identifier);
-          if (!buffersRef.current[id] || !buffersRef.current[id].loaded) {
-            return loadBuffer(stem);
-          }
-          return Promise.resolve();
-        })
-      );
-      activeStems.forEach((stem) => {
-        const key = normalizeId(stem.identifier);
-        if (playerRefs.current[key]) return;
-        const buffer = buffersRef.current[key];
-        if (!buffer) {
-          console.error(`Buffer not found for ${key}`);
-          return;
-        }
-        // Create player without pitch shifting logic
-        const player = new Tone.Player({
-          url: buffer,
-          loop: true,
-          fadeIn: 0.05,
-          fadeOut: 0.05,
-          grainSize: 0.1,
-          overlap: 0.05,
-        }).sync();
-        const volumeNode = new Tone.Volume(0);
-        // Directly connect player to volume node (no key matching)
-        player.connect(volumeNode);
-        volumeNode.connect(mainMixerRef.current);
-        playerRefs.current[key] = player;
-        volumeNodeRefs.current[key] = volumeNode;
-      });
-      return true;
-    } catch (error) {
-      console.error("Error preparing audio:", error);
-      return false;
+      ]);
     }
   };
 
-  /* ------------------ Handle Stem Selection ------------------ */
-  const handleStemSelection = (stem, type) => {
-    console.log("Stem selected:", stem, "for type:", type);
-    setCurrentStems((prev) => ({ ...prev, [type]: stem }));
-    setModalOpen(false);
-    // If already playing, immediately load buffer and start player for this stem
-    if (isPlaying) {
-      const id = normalizeId(stem.identifier);
-      loadBuffer(stem)
-        .then((buffer) => createAndStartPlayer(stem, id, buffer))
-        .catch((err) => console.error(err));
+  // Toggle ready status for current user
+  const toggleReady = () => {
+    setIsReady(!isReady);
+    
+    // Update ready status in participants list
+    setSessionParticipants(
+      sessionParticipants.map(p => 
+        p.name === username ? { ...p, ready: !isReady } : p
+      )
+    );
+
+    // If user is now ready, navigate to SoloModePlayer
+    if (!isReady) {
+      navigate("/solo-mode");
     }
   };
 
-  /* ------------------ Create and Start Player ------------------ */
-  const createAndStartPlayer = async (stem, key, buffer) => {
-    const player = new Tone.Player({
-      url: buffer,
-      loop: true,
-      fadeIn: 0.05,
-      fadeOut: 0.05,
-      grainSize: 0.1,
-      overlap: 0.05,
-    }).sync();
-    const volumeNode = new Tone.Volume(0);
-    // Directly connect player to volume node (no pitch shifting)
-    player.connect(volumeNode);
-    volumeNode.connect(mainMixerRef.current);
-    playerRefs.current[key] = player;
-    volumeNodeRefs.current[key] = volumeNode;
-    if (isPlaying) {
-      player.start("+0.1");
+  // Check if all participants are ready
+  const allReady = sessionParticipants.every(p => p.ready);
+  
+  // Start the remix when everyone is ready
+  const startRemix = () => {
+    // Only proceed if all participants are ready
+    if (allReady) {
+      navigate("/solo-mode");
     }
   };
 
-  /* ------------------ Playback Control ------------------ */
-  const handlePlayPause = async () => {
-    if (isPlaying) {
-      pausePlayback();
+  // Choose a stem type for the current user
+  const chooseStemType = (type) => {
+    // Check if the stem type is already taken
+    if (sessionParticipants.some(p => p.stemType === type && p.name !== username)) {
       return;
     }
-    setPlaybackLoading(true);
-    try {
-      const prepared = await prepareAudioProcessing();
-      if (!prepared) {
-        console.error("Failed to prepare audio");
-        setPlaybackLoading(false);
-        return;
-      }
-      playbackTimeoutRef.current = setTimeout(() => {
-        startPlayback();
-        setPlaybackLoading(false);
-      }, 100);
-    } catch (error) {
-      console.error("Error starting playback:", error);
-      setPlaybackLoading(false);
-    }
-  };
-
-  const startPlayback = () => {
-    Tone.Transport.start();
-    const startTime = "+0.05";
-    Object.entries(currentStems).forEach(([type, stem]) => {
-      if (!stem) return;
-      const key = normalizeId(stem.identifier);
-      const player = playerRefs.current[key];
-      if (player) {
-        if (player.state === "started") player.stop();
-        player.start(startTime);
-      }
-    });
-    setIsPlaying(true);
-  };
-
-  const pausePlayback = () => {
-    Object.values(playerRefs.current).forEach((player) => {
-      if (player && player.state === "started") player.stop();
-    });
-    Tone.Transport.pause();
-    Tone.Transport.position = 0;
-    setIsPlaying(false);
-  };
-
-  const handleBpmChange = (e) => {
-    const newBpm = parseInt(e.target.value, 10);
-    setBpm(newBpm);
-  };
-
-  /* ------------------ Simulated Session Management ------------------ */
-  const createSessionHandler = async () => {
-    const dummyCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-    setSessionCode(dummyCode);
-    setIsInSession(true);
-    setConnectedUsers(["localUser"]);
-    setShowReadyModal(true);
-    console.log("Created session with code:", dummyCode);
-    return dummyCode;
-  };
-
-  const joinSession = async (code) => {
-    if (!code || code.length !== 4) {
-      setError("Session code must be 4 characters");
-      return false;
-    }
-    setSessionCode(code);
-    setIsInSession(true);
-    setConnectedUsers(["host", "localUser"]);
-    setShowReadyModal(true);
-    console.log("Joined session with code:", code);
-    return true;
-  };
-
-  const leaveSession = () => {
-    setSessionCode("");
-    setIsInSession(false);
-    setConnectedUsers([]);
-    setReadyUsers([]);
-    setShowReadyModal(false);
-    setError(null);
-  };
-
-  const setUserReady = async () => {
-    const success = await ensureAudioInitialized();
-    if (!success) return;
-    setReadyUsers(["localUser"]);
-    setShowReadyModal(false);
-  };
-
-  /* ------------------ Filter Stems by Type ------------------ */
-  const filterStemsByType = (type) => {
-    const filtered = stems.filter((stem) => {
-      const stemType = stem.type?.toLowerCase() || "";
-      return STEM_TYPES[type].match(stemType);
-    });
-    console.log(`Filtered stems for ${type}:`, filtered);
-    return filtered;
+    
+    // Update the current user's stem type
+    setSessionParticipants(
+      sessionParticipants.map(p => 
+        p.name === username ? { ...p, stemType: type } : p
+      )
+    );
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[hsl(260,20%,10%)] p-6">
-      <Header />
-      <SessionControls
-        isInSession={isInSession}
-        sessionCode={sessionCode}
-        joinSession={joinSession}
-        createSessionHandler={createSessionHandler}
-        leaveSession={leaveSession}
-        connectedUsers={connectedUsers}
-      />
-      {isInSession ? (
-        <>
-          <Visualizer
-            loading={false}
-            loadingStems={loadingStems}
-            preloadProgress={preloadProgress}
-            handlePlayPause={handlePlayPause}
-            isPlaying={isPlaying}
-            playbackReady={playbackReady}
-            preloadComplete={true}
-            playbackLoading={playbackLoading}
-            bpm={bpm}
-            decreaseBpm={() => setBpm((prev) => Math.max(60, prev - 1))}
-            increaseBpm={() => setBpm((prev) => Math.min(200, prev + 1))}
-            sessionCode={sessionCode}
-            handleBpmChange={handleBpmChange}
-          />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {Object.keys(STEM_TYPES).map((type) => (
-              <StemTypeSelection
-                key={type}
-                type={type}
-                typeConfig={STEM_TYPES[type]}
-                currentStems={currentStems}
-                loadingStems={loadingStems}
-                preloadComplete={true}
-                handleOpenModal={() => {
-                  setModalOpen(true);
-                  setSelectedStemType(type);
-                }}
-              />
-            ))}
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in bg-gradient-to-br from-[#1A1429] via-[#211937] to-[#06001F]">
+      {/* Background Effects */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute top-1/4 -left-48 w-96 h-96 bg-[#8B5CF6]/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-[#EC4899]/20 rounded-full blur-3xl animate-pulse" />
+      </div>
+
+      {showSessionLobby ? (
+        <div className="max-w-2xl w-full bg-white/5 backdrop-blur-sm rounded-3xl p-8 space-y-8 border border-white/10 shadow-xl">
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Session Lobby</h2>
+            <p className="text-gray-400">Code: <span className="font-mono text-white">{sessionCode}</span></p>
+            <p className="text-sm text-gray-400">Wait until everyone is ready to begin</p>
           </div>
-          <StemSelectionModal
-            modalOpen={modalOpen}
-            selectedStemType={selectedStemType}
-            handleCloseModal={() => setModalOpen(false)}
-            STEM_TYPES={STEM_TYPES}
-            filterStemsByType={filterStemsByType}
-            loadingStems={loadingStems}
-            currentStems={currentStems}
-            handleStemSelection={handleStemSelection}
-            sessionCode={sessionCode}
-          />
-          <ActionButtons
-            selectedStems={Object.values(currentStems).filter(Boolean)}
-            sessionCode={sessionCode}
-          />
-        </>
+          
+          {/* Participants */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {["Drums", "Bass", "Melodie", "Vocals"].map((type) => {
+              const participant = sessionParticipants.find(p => p.stemType === type);
+              const stemColor = Object.values(STEM_TYPES).find(t => t.name === type)?.color || "#8B5CF6";
+              
+              return (
+                <div 
+                  key={type}
+                  className={`aspect-square rounded-2xl ${
+                    participant ? "bg-white/5 backdrop-blur-sm border border-white/10" : "border-2 border-dashed border-white/10"
+                  } flex flex-col items-center justify-center p-4 transition-all duration-300 ${
+                    !participant && sessionParticipants.some(p => p.name === username && !p.stemType)
+                      ? "cursor-pointer hover:border-white/30"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (!participant && sessionParticipants.some(p => p.name === username && !p.stemType)) {
+                      chooseStemType(type);
+                    }
+                  }}
+                >
+                  {participant ? (
+                    <>
+                      <div className="flex flex-col items-center mb-4">
+                        <span className="text-sm font-medium">{participant.name}</span>
+                        <span className="text-xs" style={{ color: stemColor }}>{type}</span>
+                      </div>
+                      
+                      <div className="h-12 flex items-end justify-center gap-1 mb-4">
+                        {[...Array(4)].map((_, j) => (
+                          <div
+                            key={j}
+                            className="w-1.5 rounded-full animate-pulse"
+                            style={{
+                              height: `${Math.random() * 100}%`,
+                              backgroundColor: `${stemColor}`,
+                              animationDelay: `${j * 0.1}s`,
+                              opacity: 0.7
+                            }}
+                          />
+                        ))}
+                      </div>
+                      
+                      <div className={`text-xs px-3 py-1 rounded-full ${
+                        participant.ready 
+                          ? `bg-[${stemColor}]/20 text-[${stemColor}]` 
+                          : "bg-gray-700/50 text-gray-400"
+                      }`}>
+                        {participant.ready ? "Ready" : "Waiting..."}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-gray-400 flex flex-col items-center">
+                      <span style={{ color: stemColor }}>{type}</span>
+                      <span className="text-xs mt-2">Available</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {sessionParticipants.length < 4 && (
+              <FestivalButton 
+                onClick={handleAddParticipant}
+                variant="outline"
+                className="text-gray-400"
+              >
+                <UserPlus className="mr-2 h-5 w-5" />
+                Add Participant (Demo)
+              </FestivalButton>
+            )}
+            
+            <FestivalButton
+              onClick={toggleReady}
+              variant={isReady ? "default" : "outline"}
+              glow={isReady}
+              className={isReady ? "" : "text-gray-400"}
+            >
+              {isReady ? (
+                <>
+                  <Check className="mr-2 h-5 w-5" />
+                  Ready
+                </>
+              ) : (
+                "Ready to Begin"
+              )}
+            </FestivalButton>
+            
+            <FestivalButton
+              onClick={startRemix}
+              disabled={!allReady}
+              glow={allReady}
+              className={!allReady ? "opacity-50" : ""}
+            >
+              <Wand2 className="mr-2 h-5 w-5" />
+              Start Mixing
+            </FestivalButton>
+          </div>
+        </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-2xl text-white/70 mb-4">
-            Create a session to start mixing
+        <div className="max-w-2xl w-full space-y-12 text-center">
+          <div className="space-y-4">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Music Sessions</h2>
+            <p className="text-xl text-gray-400">
+              Collaborate with others to create a unique remix
+            </p>
           </div>
-          <button
-            onClick={createSessionHandler}
-            className="mt-8 px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium transition"
-          >
-            Create Session
-          </button>
+          
+          <div className="flex flex-col sm:flex-row gap-8 justify-center">
+            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 flex-1 space-y-6 transition-transform hover:scale-105 border border-white/10 shadow-xl">
+              <div className="w-16 h-16 rounded-2xl bg-[#8B5CF6]/20 text-[#8B5CF6] flex items-center justify-center mx-auto">
+                <PlusCircle className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">Create Session</h3>
+              <p className="text-gray-400">Start a new session and invite others</p>
+              <FestivalButton 
+                onClick={() => setShowCreateSession(true)} 
+                glow
+                className="w-full py-3"
+              >
+                New Session
+              </FestivalButton>
+            </div>
+            
+            <div className="bg-white/5 backdrop-blur-sm rounded-3xl p-8 flex-1 space-y-6 transition-transform hover:scale-105 border border-white/10 shadow-xl">
+              <div className="w-16 h-16 rounded-2xl bg-[#EC4899]/20 text-[#EC4899] flex items-center justify-center mx-auto">
+                <Users className="h-8 w-8" />
+              </div>
+              <h3 className="text-xl font-semibold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">Join</h3>
+              <p className="text-gray-400">Join an existing session</p>
+              <FestivalButton 
+                onClick={() => setShowJoinSession(true)} 
+                variant="outline"
+                className="w-full py-3"
+              >
+                Join Session
+              </FestivalButton>
+            </div>
+          </div>
         </div>
       )}
-      <ReadyModal
-        showReadyModal={showReadyModal}
-        sessionCode={sessionCode}
-        handleReadyClick={setUserReady}
-        connectedUsers={connectedUsers}
-        readyUsers={readyUsers}
-        allUsersReady={readyUsers.length === connectedUsers.length}
-        setShowReadyModal={setShowReadyModal}
-        socket={{ id: "localUser" }}
-      />
+
+      {/* Create Session Dialog */}
+      {showCreateSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="sm:max-w-md bg-[#1A1429]/95 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Create New Session
+              </h2>
+              <p className="text-center mt-4 text-base text-gray-400">
+                You'll get a unique code to share with others for collaboration.
+              </p>
+            </div>
+            <div className="flex flex-col items-center mt-6 gap-6">
+              <div className="bg-white/5 backdrop-blur-sm p-6 rounded-xl w-full text-center border border-white/10">
+                <p className="text-sm text-gray-400 mb-2">Your name</p>
+                <input 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="text-center font-medium bg-transparent border border-white/10 rounded-md p-2 w-full focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+              <FestivalButton 
+                onClick={handleCreateSession}
+                glow
+                className="w-full py-3"
+              >
+                Create Session
+              </FestivalButton>
+              <button 
+                onClick={() => setShowCreateSession(false)}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Join Session Dialog */}
+      {showJoinSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="sm:max-w-md bg-[#1A1429]/95 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Join Session
+              </h2>
+              <p className="text-center mt-4 text-base text-gray-400">
+                Enter the 4-letter code you received
+              </p>
+            </div>
+            <div className="flex flex-col items-center mt-6 gap-6">
+              <div className="bg-white/5 backdrop-blur-sm p-6 rounded-xl w-full text-center space-y-4 border border-white/10">
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Your name</p>
+                  <input 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="text-center font-medium bg-transparent border border-white/10 rounded-md p-2 w-full focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Session code</p>
+                  <input 
+                    value={sessionCode}
+                    onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+                    maxLength={4}
+                    placeholder="ABCD"
+                    className="text-center font-mono text-xl font-medium bg-transparent border border-white/10 rounded-md p-2 w-full focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <FestivalButton 
+                onClick={handleJoinSession}
+                glow
+                disabled={sessionCode.length !== 4}
+                className="w-full py-3"
+              >
+                Join
+              </FestivalButton>
+              <button 
+                onClick={() => setShowJoinSession(false)}
+                className="text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add some CSS for animations */}
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+        
+        .animate-pulse-slow {
+          animation: pulse-slow 4s infinite;
+        }
+        
+        .text-gradient {
+          background: linear-gradient(to right, #8B5CF6, #EC4899);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        
+        .glass {
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
     </div>
   );
 };

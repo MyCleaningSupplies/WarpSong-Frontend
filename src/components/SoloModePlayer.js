@@ -3,6 +3,8 @@ import * as Tone from "tone";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../config/api";
+import { useGamification } from "../context/GamificationContext";
+import LevelUpModal from "../components/LevelUpModal";
 import {
   ArrowLeft,
   Download,
@@ -11,36 +13,75 @@ import {
   Info,
   Play,
   Pause,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 // Helper: Normalize identifiers
 const normalizeId = (id) => id?.trim().toLowerCase();
 
+// Define stem types
 const STEM_TYPES = {
   DRUMS: {
     name: "Drums",
-    color: "from-[#8B5CF6] to-[#EC4899]", // Purple to pink
+    color: "#EC4899",
     match: (type) => type?.toLowerCase() === "drums",
   },
   BASS: {
     name: "Bass",
-    color: "from-[#F97316] to-[#EC4899]", // Orange to pink
+    color: "#F97316",
     match: (type) => type?.toLowerCase() === "bass",
   },
   MELODIE: {
     name: "Melodie",
-    color: "from-[#F97316] to-[#06B6D4]", // Orange to cyan
+    color: "#06B6D4",
     match: (type) => type?.toLowerCase() === "melodie",
   },
   VOCALS: {
     name: "Vocals",
-    color: "from-[#06B6D4] to-[#8B5CF6]", // Cyan to purple
+    color: "#8B5CF6",
     match: (type) => type?.toLowerCase() === "vocals",
   },
 };
 
+// Custom Button Component
+const FestivalButton = ({
+  children,
+  onClick,
+  variant = "default",
+  glow = false,
+  disabled = false,
+  className = "",
+}) => {
+  const baseClasses =
+    "px-4 py-2 rounded-full font-medium transition-all duration-300 flex items-center justify-center";
+
+  const variantClasses = {
+    default: `bg-gradient-to-r from-purple-600 to-pink-600 text-white ${
+      glow ? "shadow-lg shadow-purple-500/25" : ""
+    }`,
+    outline:
+      "bg-white/10 backdrop-blur-sm border border-purple-500/30 text-purple-400 hover:bg-purple-500/10",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClasses} ${variantClasses[variant]} ${
+        disabled ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"
+      } ${className}`}
+    >
+      {children}
+    </button>
+  );
+};
+
 const SoloModePlayer = () => {
   const navigate = useNavigate();
+  const { updateStats } = useGamification();
+  const [levelUpVisible, setLevelUpVisible] = useState(false);
+  const [newLevel, setNewLevel] = useState(1);
 
   // State
   const [stems, setStems] = useState([]);
@@ -63,6 +104,7 @@ const SoloModePlayer = () => {
     MELODIE: Array(5).fill(0),
     VOCALS: Array(5).fill(0),
   });
+  const [isMuted, setIsMuted] = useState(false);
 
   // Refs for Tone.js objects
   const mainMixerRef = useRef(null);
@@ -93,11 +135,14 @@ const SoloModePlayer = () => {
         // Create main mixer with limiter to prevent clipping
         const limiter = new Tone.Limiter(-3);
         const mixer = new Tone.Gain(0.8);
-        
+
+        // Set initial mute state
+        mixer.gain.value = isMuted ? 0 : 0.8; // Initial volume
+
         // Create main analyzer for visualization
         const analyzer = new Tone.Analyser("fft", 128);
         mainAnalyzerRef.current = analyzer;
-        
+
         mixer.connect(analyzer);
         mixer.connect(limiter);
         limiter.toDestination();
@@ -105,14 +150,14 @@ const SoloModePlayer = () => {
 
         // Set initial BPM
         Tone.Transport.bpm.value = bpm;
-        
+
         // Create a loop to track playback position
         const loopLength = loopLengthRef.current;
         const loop = new Tone.Loop((time) => {
           // This loop runs once per measure to keep track of position
           // We don't need to do anything here, it just keeps the transport in sync
         }, "1m").start(0);
-        
+
         loopRef.current = loop;
 
         setAudioInitialized(true);
@@ -126,6 +171,16 @@ const SoloModePlayer = () => {
     return true;
   };
 
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const newMuteState = !prev;
+      if (mainMixerRef.current) {
+        mainMixerRef.current.gain.value = newMuteState ? 0 : 0.8;
+      }
+      return newMuteState;
+    });
+  };
+
   // Initialize audio context
   useEffect(() => {
     // Clean up function
@@ -134,7 +189,7 @@ const SoloModePlayer = () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      
+
       // Clear any pending timeouts
       if (playbackTimeoutRef.current) {
         clearTimeout(playbackTimeoutRef.current);
@@ -142,7 +197,7 @@ const SoloModePlayer = () => {
 
       // Clean up Tone.js resources
       Tone.Transport.stop();
-      
+
       if (loopRef.current) {
         loopRef.current.dispose();
       }
@@ -201,43 +256,43 @@ const SoloModePlayer = () => {
   // Update visualizer data
   const updateVisualizer = () => {
     if (!mainAnalyzerRef.current || !isPlaying) return;
-    
+
     // Get frequency data from main analyzer
     const frequencyData = mainAnalyzerRef.current.getValue();
-    
+
     // Process data for main visualizer
     const processedData = Array(64).fill(0);
     for (let i = 0; i < 64; i++) {
       // Map analyzer data to visualizer bars (0-63)
-      const index = Math.floor(i * frequencyData.length / 64);
+      const index = Math.floor((i * frequencyData.length) / 64);
       // Convert to dB scale and normalize (values are typically -100 to 0)
       const value = Math.max(0, 100 + frequencyData[index]) / 100;
       processedData[i] = value;
     }
     setVisualizerData(processedData);
-    
+
     // Process data for stem visualizers
     const newStemData = { ...stemVisualizerData };
-    
+
     // Update each stem's visualizer data if it has an analyzer
     Object.entries(stemAnalyzersRef.current).forEach(([type, analyzer]) => {
       if (!analyzer) return;
-      
+
       const stemFreqData = analyzer.getValue();
       const stemData = Array(5).fill(0);
-      
+
       for (let i = 0; i < 5; i++) {
         // Sample 5 points from the frequency data
-        const index = Math.floor(i * stemFreqData.length / 5);
+        const index = Math.floor((i * stemFreqData.length) / 5);
         const value = Math.max(0, 100 + stemFreqData[index]) / 100;
         stemData[i] = value;
       }
-      
+
       newStemData[type] = stemData;
     });
-    
+
     setStemVisualizerData(newStemData);
-    
+
     // Request next animation frame
     animationFrameRef.current = requestAnimationFrame(updateVisualizer);
   };
@@ -250,17 +305,29 @@ const SoloModePlayer = () => {
     } else if (animationFrameRef.current) {
       // Stop visualization
       cancelAnimationFrame(animationFrameRef.current);
-      
+
       // Reset visualizer data
-      setVisualizerData(Array(64).fill(0).map(() => 0.1 + Math.random() * 0.2));
+      setVisualizerData(
+        Array(64)
+          .fill(0)
+          .map(() => 0.1 + Math.random() * 0.2)
+      );
       setStemVisualizerData({
-        DRUMS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-        BASS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-        MELODIE: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-        VOCALS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
+        DRUMS: Array(5)
+          .fill(0)
+          .map(() => 0.1 + Math.random() * 0.2),
+        BASS: Array(5)
+          .fill(0)
+          .map(() => 0.1 + Math.random() * 0.2),
+        MELODIE: Array(5)
+          .fill(0)
+          .map(() => 0.1 + Math.random() * 0.2),
+        VOCALS: Array(5)
+          .fill(0)
+          .map(() => 0.1 + Math.random() * 0.2),
       });
     }
-    
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -273,12 +340,24 @@ const SoloModePlayer = () => {
     if (!showStemSelector && canvasRef.current) {
       // Set initial random values for visualizers when not playing
       if (!isPlaying) {
-        setVisualizerData(Array(64).fill(0).map(() => 0.1 + Math.random() * 0.2));
+        setVisualizerData(
+          Array(64)
+            .fill(0)
+            .map(() => 0.1 + Math.random() * 0.2)
+        );
         setStemVisualizerData({
-          DRUMS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-          BASS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-          MELODIE: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-          VOCALS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
+          DRUMS: Array(5)
+            .fill(0)
+            .map(() => 0.1 + Math.random() * 0.2),
+          BASS: Array(5)
+            .fill(0)
+            .map(() => 0.1 + Math.random() * 0.2),
+          MELODIE: Array(5)
+            .fill(0)
+            .map(() => 0.1 + Math.random() * 0.2),
+          VOCALS: Array(5)
+            .fill(0)
+            .map(() => 0.1 + Math.random() * 0.2),
         });
       }
     }
@@ -345,14 +424,26 @@ const SoloModePlayer = () => {
 
     console.log("Preloading metadata complete!");
     setPreloadComplete(true);
-    
+
     // Set initial random values for visualizers
-    setVisualizerData(Array(64).fill(0).map(() => 0.1 + Math.random() * 0.2));
+    setVisualizerData(
+      Array(64)
+        .fill(0)
+        .map(() => 0.1 + Math.random() * 0.2)
+    );
     setStemVisualizerData({
-      DRUMS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-      BASS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-      MELODIE: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
-      VOCALS: Array(5).fill(0).map(() => 0.1 + Math.random() * 0.2),
+      DRUMS: Array(5)
+        .fill(0)
+        .map(() => 0.1 + Math.random() * 0.2),
+      BASS: Array(5)
+        .fill(0)
+        .map(() => 0.1 + Math.random() * 0.2),
+      MELODIE: Array(5)
+        .fill(0)
+        .map(() => 0.1 + Math.random() * 0.2),
+      VOCALS: Array(5)
+        .fill(0)
+        .map(() => 0.1 + Math.random() * 0.2),
     });
   };
 
@@ -444,21 +535,20 @@ const SoloModePlayer = () => {
 
         // Create volume node
         const volumeNode = new Tone.Volume(0);
-        
+
         // Create analyzer for this stem
         if (stemType) {
           const stemAnalyzer = new Tone.Analyser("fft", 32);
           stemAnalyzersRef.current[stemType] = stemAnalyzer;
-          
+
           // Connect player to volume node to stem analyzer to main mixer
           player.connect(volumeNode);
           volumeNode.connect(stemAnalyzer);
-          volumeNode.connect(mainMixerRef.current);
         } else {
           // Connect player directly to volume node to main mixer
           player.connect(volumeNode);
-          volumeNode.connect(mainMixerRef.current);
         }
+        volumeNode.connect(mainMixerRef.current);
 
         // Store references
         playerRefs.current[key] = player;
@@ -515,7 +605,7 @@ const SoloModePlayer = () => {
           volumeNodeRefs.current[prevKey].dispose();
           delete volumeNodeRefs.current[prevKey];
         }
-        
+
         // Dispose stem analyzer if exists
         if (stemAnalyzersRef.current[stemType]) {
           stemAnalyzersRef.current[stemType].dispose();
@@ -557,21 +647,20 @@ const SoloModePlayer = () => {
 
     // Create volume node
     const volumeNode = new Tone.Volume(0);
-    
+
     // Create analyzer for this stem
     if (stemType) {
       const stemAnalyzer = new Tone.Analyser("fft", 32);
       stemAnalyzersRef.current[stemType] = stemAnalyzer;
-      
+
       // Connect player to volume node to stem analyzer to main mixer
       player.connect(volumeNode);
       volumeNode.connect(stemAnalyzer);
-      volumeNode.connect(mainMixerRef.current);
     } else {
       // Connect player directly to volume node to main mixer
       player.connect(volumeNode);
-      volumeNode.connect(mainMixerRef.current);
     }
+    volumeNode.connect(mainMixerRef.current);
 
     // Store references
     playerRefs.current[key] = player;
@@ -582,8 +671,10 @@ const SoloModePlayer = () => {
     if (isPlaying) {
       // Get current transport position
       const currentPosition = Tone.Transport.position;
-      console.log(`Starting player at current transport position: ${currentPosition}`);
-      
+      console.log(
+        `Starting player at current transport position: ${currentPosition}`
+      );
+
       // Start immediately at the current position
       player.start();
     }
@@ -606,7 +697,9 @@ const SoloModePlayer = () => {
       } else if (isPlaying) {
         // Start at current transport position
         player.start();
-        console.log(`Started player for ${key} at position ${Tone.Transport.position}`);
+        console.log(
+          `Started player for ${key} at position ${Tone.Transport.position}`
+        );
       }
     }
   };
@@ -645,7 +738,7 @@ const SoloModePlayer = () => {
     // Reset transport position to ensure we start from the beginning of the loop
     Tone.Transport.position = 0;
     loopStartTimeRef.current = Tone.now();
-    
+
     // Start transport first
     Tone.Transport.start();
 
@@ -690,6 +783,43 @@ const SoloModePlayer = () => {
     setSelectedStemType(null);
   };
 
+  // Handle save
+  const handleSave = async () => {
+    try {
+      const mashupData = {
+        name: "My Awesome Mashup", // Get the mashup name from the user
+        stemIds: stems.map((stem) => stem._id), // IDs of all selected stems
+        isPublic: true, // Set visibility preference
+      };
+
+      const token = localStorage.getItem("token");
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/mashup/save`,
+        mashupData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Check if the response includes gamification data and if user leveled up
+      if (response.data.gamification && response.data.gamification.leveledUp) {
+        setNewLevel(response.data.gamification.level);
+        setLevelUpVisible(true);
+      }
+
+      // Refresh gamification stats after saving mashup
+      await updateStats();
+
+      // Redirect to success page
+      navigate("/mashup-success");
+    } catch (error) {
+      console.error("❌ Error saving mashup:", error);
+    }
+  };
+
   // Handle share
   const handleShare = () => {
     navigate("/share");
@@ -725,28 +855,39 @@ const SoloModePlayer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0A1F] text-white">
+    <div className="min-h-screen bg-[hsl(260,20%,10%)] text-white">
       {/* Header */}
       <div className="flex items-center justify-between p-6">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center text-white/70 hover:text-white"
+          className="flex items-center text-white/70 hover:text-white transition-colors"
         >
           <ArrowLeft className="mr-2 h-5 w-5" />
-          Terug
+          Back
         </button>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] text-transparent bg-clip-text">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
           Solo Mode Studio
         </h1>
-        <div className="w-10"></div> {/* Spacer for alignment */}
+        <div className="w-10">
+          <button
+            onClick={toggleMute}
+            className="text-white/70 hover:text-white transition-colors"
+          >
+            {isMuted ? (
+              <VolumeX className="h-5 w-5" />
+            ) : (
+              <Volume2 className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Main Visualizer */}
       <div className="mx-6 rounded-3xl bg-[#1A1429]/50 overflow-hidden relative mb-6">
         {showStemSelector ? (
           <div className="p-6 relative z-10">
-            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] text-transparent bg-clip-text">
-              Kies een {STEM_TYPES[selectedStemType]?.name}
+            <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+              Choose a {STEM_TYPES[selectedStemType]?.name}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto max-h-[70vh]">
               {filterStemsByType(selectedStemType).length === 0 ? (
@@ -784,7 +925,7 @@ const SoloModePlayer = () => {
         ) : (
           <div className="p-6 flex flex-col items-center">
             <div className="text-center mb-6">
-              <Music className="w-6 h-6 text-[#8B5CF6] mx-auto mb-2" />
+              <Music className="w-6 h-6 text-purple-400 mx-auto mb-2" />
               <p className="text-white/80">Solo Mixing</p>
               <p className="text-xs text-white/50 mt-1">
                 Mix your collected stems without constraints
@@ -796,31 +937,37 @@ const SoloModePlayer = () => {
               {visualizerData.map((value, i) => {
                 // Calculate height based on value (0-1)
                 const barHeight = Math.max(5, value * 100);
-                
+                const color =
+                  i % 4 === 0
+                    ? "#8B5CF6"
+                    : i % 4 === 1
+                    ? "#EC4899"
+                    : i % 4 === 2
+                    ? "#F97316"
+                    : "#06B6D4";
+
                 return (
                   <div
                     key={i}
-                    className={`w-2 rounded-full bg-gradient-to-t ${
-                      i % 4 === 0 ? "from-[#8B5CF6] to-[#06B6D4]" :
-                      i % 4 === 1 ? "from-[#EC4899] to-[#8B5CF6]" :
-                      i % 4 === 2 ? "from-[#F97316] to-[#EC4899]" :
-                      "from-[#06B6D4] to-[#F97316]"
-                    } ${isPlaying ? 'animate-pulse' : ''}`}
+                    className="w-2 rounded-full"
                     style={{
                       height: `${barHeight}%`,
+                      background: color,
                       opacity: isPlaying ? 1 : 0.3,
-                      animationDuration: `${0.5 + Math.random()}s`,
+                      animation: isPlaying
+                        ? `pulse ${0.5 + Math.random()}s ease-in-out infinite alternate`
+                        : "none",
                     }}
                   />
                 );
               })}
             </div>
-            
+
             {/* BPM controls */}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={decreaseBpm}
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
               >
                 -
               </button>
@@ -830,7 +977,7 @@ const SoloModePlayer = () => {
               </div>
               <button
                 onClick={increaseBpm}
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
               >
                 +
               </button>
@@ -854,9 +1001,7 @@ const SoloModePlayer = () => {
             <div
               key={type}
               onClick={() => handleStemTypeSelect(type)}
-              className={`bg-[#1A1429]/80 rounded-xl p-4 text-left relative cursor-pointer ${
-                loadingStems[type] ? "relative" : ""
-              }`}
+              className="bg-[#1A1429]/80 rounded-xl p-4 text-left relative cursor-pointer transition-all duration-300 hover:bg-[#1A1429]/90"
             >
               {loadingStems[type] && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-xl">
@@ -869,7 +1014,7 @@ const SoloModePlayer = () => {
                 {stem && (
                   <div
                     onClick={(e) => toggleTrack(type, e)}
-                    className="w-5 h-5 flex items-center justify-center text-white/70 cursor-pointer"
+                    className="w-5 h-5 flex items-center justify-center text-white/70 cursor-pointer hover:text-white transition-colors"
                   >
                     <svg
                       viewBox="0 0 24 24"
@@ -904,17 +1049,19 @@ const SoloModePlayer = () => {
                   {stemData.map((value, i) => {
                     // Calculate height based on value (0-1)
                     const barHeight = Math.max(10, value * 100);
-                    
+                    const color = STEM_TYPES[type].color;
+
                     return (
                       <div
                         key={i}
-                        className={`w-1 rounded-full bg-gradient-to-t ${
-                          data.color
-                        } ${isActive ? 'animate-pulse' : ''}`}
+                        className="w-1 rounded-full"
                         style={{
                           height: `${barHeight}%`,
+                          background: color,
                           opacity: isActive ? 1 : 0.3,
-                          animationDuration: `${0.3 + Math.random() * 0.3}s`,
+                          animation: isActive
+                            ? `pulse ${0.3 + Math.random() * 0.3}s ease-in-out infinite alternate`
+                            : "none",
                         }}
                       />
                     );
@@ -928,16 +1075,14 @@ const SoloModePlayer = () => {
 
       {/* Action Buttons */}
       <div className="flex justify-center gap-4 px-6 mb-6">
-        <button
+        <FestivalButton
           onClick={handlePlayPause}
-          disabled={!preloadComplete || playbackLoading || (!isPlaying && !playbackReady)}
-          className={`flex-1 py-3 px-6 rounded-full flex items-center justify-center gap-2 ${
-            isPlaying
-              ? "bg-[#1A1429] border border-[#8B5CF6]/30"
-              : playbackReady
-              ? "bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4]"
-              : "bg-[#1A1429]/50 opacity-50"
-          }`}
+          disabled={
+            !preloadComplete ||
+            playbackLoading ||
+            (!isPlaying && !playbackReady)
+          }
+          className="flex-1 py-3 px-6"
         >
           {playbackLoading ? (
             <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
@@ -952,36 +1097,44 @@ const SoloModePlayer = () => {
               <span>Play</span>
             </>
           )}
-        </button>
+        </FestivalButton>
 
-        <button className="flex-1 py-3 px-6 rounded-full border border-[#8B5CF6]/30 bg-[#1A1429]/80 flex items-center justify-center gap-2">
-          <Download className="h-5 w-5" />
-          <span>Opslaan</span>
-        </button>
-
-        <button
-          onClick={handleShare}
-          className="flex-1 py-3 px-6 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4] flex items-center justify-center gap-2"
+        <FestivalButton
+          onClick={handleSave}
+          variant="outline"
+          className="flex-1 py-3 px-6 text-gray-400"
         >
+          <Download className="h-5 w-5" />
+          Save
+        </FestivalButton>
+
+        <FestivalButton onClick={handleShare} className="flex-1 py-3 px-6">
           <Share2 className="h-5 w-5" />
-          <span>Delen</span>
-        </button>
+          Share
+        </FestivalButton>
       </div>
 
-      {/* Add animation keyframes in a style tag */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-          @keyframes pulse {
-            0% { transform: scaleY(0.7); }
-            100% { transform: scaleY(1); }
-          }
-          .animate-pulse {
-            animation: pulse 0.8s ease-in-out infinite alternate;
-          }
-        `,
-        }}
+      {/* Level Up Modal */}
+      <LevelUpModal
+        visible={levelUpVisible}
+        level={newLevel}
+        onClose={() => setLevelUpVisible(false)}
       />
+
+      {/* Add animation keyframes in a style tag */}
+      <style jsx>{`
+        @keyframes pulse {
+          0% {
+            transform: scaleY(0.7);
+          }
+          100% {
+            transform: scaleY(1);
+          }
+        }
+        .animate-pulse {
+          animation: pulse 0.8s ease-in-out infinite alternate;
+        }
+      `}</style>
 
       {/* Preload overlay */}
       {!preloadComplete && stems.length > 0 && (
@@ -989,7 +1142,7 @@ const SoloModePlayer = () => {
           <div className="text-2xl mb-4">Loading Stems...</div>
           <div className="w-64 h-4 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-[#8B5CF6] to-[#06B6D4]"
+              className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
               style={{ width: `${preloadProgress}%` }}
             />
           </div>
@@ -1001,3 +1154,4 @@ const SoloModePlayer = () => {
 };
 
 export default SoloModePlayer;
+

@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
+import { GamificationProvider } from "./context/GamificationContext"; // Import GamificationProvider
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminPanel from "./components/AdminPanel";
 import Login from "./components/Login";
@@ -23,45 +24,47 @@ const App = () => {
   return (
     <AuthProvider>
       <SocketProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/profile-creation" element={<ProfileCreation />} />
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute adminOnly={true}>
-                  <AdminPanel />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/scan" element={<ScanPage />} />
-            <Route path="/stem-player" element={<StemPlayer />} />
-            <Route path="/connect" element={<Connect />} />
-            <Route path="/solo-mode" element={<SoloModePlayer />} />
-            
-            {/* Protect the profile route */}
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfileScreen />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Protect the mashup success route */}
-            <Route
-              path="/mashup-success"
-              element={
-                <ProtectedRoute>
-                  <MashupSuccess />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </Router>
+        <GamificationProvider> {/* Add GamificationProvider here */}
+          <Router>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/profile-creation" element={<ProfileCreation />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly={true}>
+                    <AdminPanel />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/scan" element={<ScanPage />} />
+              <Route path="/stem-player" element={<StemPlayer />} />
+              <Route path="/connect" element={<Connect />} />
+              <Route path="/solo-mode" element={<SoloModePlayer />} />
+              
+              {/* Protect the profile route */}
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfileScreen />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Protect the mashup success route */}
+              <Route
+                path="/mashup-success"
+                element={
+                  <ProtectedRoute>
+                    <MashupSuccess />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </Router>
+        </GamificationProvider> {/* Close GamificationProvider */}
       </SocketProvider>
     </AuthProvider>
   );
