@@ -866,7 +866,7 @@ const SoloModePlayer = () => {
           Back
         </button>
         <h1 className="text-xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
-          Solo Mode Studio
+          Welcome to the mix.
         </h1>
         <div className="w-10">
           <button
@@ -926,7 +926,6 @@ const SoloModePlayer = () => {
           <div className="p-6 flex flex-col items-center">
             <div className="text-center mb-6">
               <Music className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-              <p className="text-white/80">Solo Mixing</p>
               <p className="text-xs text-white/50 mt-1">
                 Mix your collected stems without constraints
               </p>
@@ -1108,10 +1107,7 @@ const SoloModePlayer = () => {
           Save
         </FestivalButton>
 
-        <FestivalButton onClick={handleShare} className="flex-1 py-3 px-6">
-          <Share2 className="h-5 w-5" />
-          Share
-        </FestivalButton>
+      
       </div>
 
       {/* Level Up Modal */}
